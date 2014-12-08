@@ -7,7 +7,8 @@ from os import urandom
 from os import path
 from os import access
 from os import W_OK
-
+from os import remove
+import subprocess
 
 def create_file(filename,filesize):
     record_block = 1024
@@ -18,27 +19,47 @@ def create_file(filename,filesize):
             rand_file.write(rand_bytes)
             size_count += 1
         rand_file.flush
-    
-    
+    with open('logfile.log','a') as logout:
+        for i in range(1,101,1):
+            test_command(filename,filesize,i,logout)
+    if filesize%10 == 0:
+        print 'made size ',str(filesize)
+    remove(filename)
+
+def test_command(filename,filesize,runner,logout):
+    command = ['perf', 'stat', '-x,', '-e', 'task-clock','--log-fd','2', 'cp', filename, 'testmich']
+#    print 'command:',command
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,shell=False)
+#    print result
+    output,err = process.communicate()
+    commout = err.rstrip()
+#    print'out:',output,'err:',err
+    logger = commout+","+str(filesize)+","+str(runner)+"\n"
+    logout.write(logger)
+    remove('testmich')
+  #  remove(filename)
+
+
+
 def create_files():
     overall = 0
     for a in range(1,1001,1):
         fi = 'seq-'+str(a)+'-chunk'
-        print(fi)
+#        print(fi)
         overall += a
-#        create_file(fi,a)
+        create_file(fi,a)
     for a in range(2,101,1):
         siz = a * 1000
         fi = 'seq-'+str(siz)+'-chunk'
-        print(fi)
+#        print(fi)
         overall += siz
-#        create_file(fi,siz)
+        #create_file(fi,siz)
     for a in range(2,11,1):
         siz = a * 1000 * 100
         fi = 'seq-'+str(siz)+'-chunk'
-        print(fi)
+ #       print(fi)
         overall += siz
-#        create_file(fi,siz)
+        #create_file(fi,siz)
 
     megB = float(overall) / float(1024)
     gigB = float(megB) / float(1024)

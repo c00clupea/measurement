@@ -53,13 +53,13 @@ def create_files():
         fi = 'seq-'+str(siz)+'-chunk'
 #        print(fi)
         overall += siz
-        #create_file(fi,siz)
+        create_file(fi,siz)
     for a in range(2,11,1):
         siz = a * 1000 * 100
         fi = 'seq-'+str(siz)+'-chunk'
  #       print(fi)
         overall += siz
-        #create_file(fi,siz)
+        create_file(fi,siz)
 
     megB = float(overall) / float(1024)
     gigB = float(megB) / float(1024)

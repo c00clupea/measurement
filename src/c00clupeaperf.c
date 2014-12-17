@@ -15,6 +15,7 @@
 static inline int __diff_timespecs(struct timespec *r, struct timespec *a, struct timespec *b);
 static inline int __call_system(struct c00_measure_conf *config, struct c00_measure_result *result);
 static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result);
+static inline int __calc_sec(struct timespec *t, float *r);
 
 
 int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *result){
@@ -82,6 +83,10 @@ int main( int argc, char **argv ){
 	}
 	if(BITTEST(config->flags, MEASURE_TIME)){
 		C00WRITE("Result time %ld sec %ld ns\n",result->exvptime->tv_sec,result->exvptime->tv_nsec);
+		float res =  0;
+		__calc_sec(result->exvptime, &res);
+		C00WRITE("Result time %f sec\n",res);
+		
 	}
 	__destroy_all(config,result);
 	return TRUE;
@@ -113,5 +118,10 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
 	free(config);
 	free(result->exvptime);
 	free(result);
+	return TRUE;
+}
+
+static inline int __calc_sec(struct timespec *t, float *r){
+	*r = (float)t->tv_sec + ((float)t->tv_nsec / 1000000000L);
 	return TRUE;
 }

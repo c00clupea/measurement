@@ -48,7 +48,9 @@ int main( int argc, char **argv ){
 	struct c00_measure_conf *config = malloc(sizeof(struct c00_measure_conf));
 	struct c00_measure_result *result = malloc(sizeof(struct c00_measure_result));
 	result->exvptime = malloc(sizeof(struct timespec));
-	
+#if OSDETECTED == DARWIN
+	fprintf(stdout,"You use a system (Darwin) without monothonic counter....you should approximate more measurements\n");
+#endif	
 
 	echocheck(argc > 1,"Sorry but you need at least one command you have %d arguments...\n",argc - 1);
 	

@@ -31,7 +31,7 @@
 #define BITTEST(a, b) ((a)[BITSLOT(b)] & BITMASK(b))
 #define BITNSLOTS(nb) ((nb + CHAR_BIT - 1) / CHAR_BIT)
 
-#define BILLION  1000000000L;
+#define NSTOS(N)  (((float)N / 1000000000L));
 
 
 

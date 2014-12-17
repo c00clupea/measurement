@@ -122,6 +122,6 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
 }
 
 static inline int __calc_sec(struct timespec *t, float *r){
-	*r = (float)t->tv_sec + ((float)t->tv_nsec / 1000000000L);
+	*r = (float)t->tv_sec + NSTOS(t->tv_nsec);
 	return TRUE;
 }

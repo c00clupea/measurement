@@ -18,10 +18,15 @@ bin/
 *~
 aclocal.m4
 depcomp
-autom4te.cache/compile
 *.emacs.desktop
 missing
 clang_output_*
 val
 config.log
 src/stamp-h1
+autom4te.cache/
+compile
+config.guess
+config.sub
+configure
+src/conf.h.in

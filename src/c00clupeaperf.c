@@ -14,7 +14,7 @@
 
 static inline int __diff_timespecs(struct timespec *r, struct timespec *a, struct timespec *b);
 static inline int __call_system(struct c00_measure_conf *config, struct c00_measure_result *result);
-static inline int __parse_command(char *cmdline, char **argv);
+static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result);
 
 
 int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *result){
@@ -27,7 +27,7 @@ int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *res
 		return ERROR;
 	}
 	
-	sleep(3);
+	__call_system(config,result);
 
 	if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) {
 		C00WRITEN("Can not use stop clock\n");
@@ -77,13 +77,13 @@ int main( int argc, char **argv ){
 	C00DEBUG("Command :%s",config->cmd);
 
 	if(measure_exvp(config,result) != TRUE){
-		free(config);
-		free(result);
+		__destroy_all(config,result);
 		goto error;
 	}
-	C00WRITE("Result time %ld sec %ld ns",result->exvptime->tv_sec,result->exvptime->tv_nsec);
-	free(result);
-	free(config);
+	if(BITTEST(config->flags, MEASURE_TIME)){
+		C00WRITE("Result time %ld sec %ld ns\n",result->exvptime->tv_sec,result->exvptime->tv_nsec);
+	}
+	__destroy_all(config,result);
 	return TRUE;
 error:
 	fprintf(stdout,"Exit with error...see logfiles\n");
@@ -103,10 +103,15 @@ static inline int __diff_timespecs(struct timespec *r, struct timespec *a, struc
 }
 
 static inline int __call_system(struct c00_measure_conf *config, struct c00_measure_result *result){
+	result->code = system(config->cmd);
+	return TRUE;
 	
 }
 
 
-static inline int __parse_command(char *cmdline, char **argv){
-	
+static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result){
+	free(config);
+	free(result->exvptime);
+	free(result);
+	return TRUE;
 }

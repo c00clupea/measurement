@@ -67,6 +67,7 @@ struct c00_measure_conf{
 
 struct c00_measure_result{
 	struct timespec *exvptime;
+	int code;
 };
 
 int measure_exvp(struct c00_measure_conf *config,struct c00_measure_result *result);

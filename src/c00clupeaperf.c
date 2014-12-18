@@ -56,7 +56,7 @@ int main( int argc, char **argv ){
 
 
 	echocheck(argc > 1,"Sorry but you need at least one command you have %d arguments...\n",argc - 1);
-	
+	/*+kommentar*/
 	memset(config->flags,0,BITNSLOTS(MAX_BITSET));
 
 

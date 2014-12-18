@@ -59,9 +59,11 @@ int main( int argc, char **argv ){
 	
 	memset(config->flags,0,BITNSLOTS(MAX_BITSET));
 
+
+
 	for(i = 1; i < argc; i++){
 		if(check_argv(i,"--mem","-m")){
-			BITSET(config->flags, MEASURE_MEM);
+			BITSET(config->flags, MEASURE_MEM);		       
 			continue;
 		}
 		if(check_argv(i,"--time","-t")){
@@ -86,6 +88,12 @@ int main( int argc, char **argv ){
 			strncpy(config->cmd,argv[i],1024);
 		}
 	}
+	C00WRITEVERBOSEN("Call c00clupeaperf with options :");
+	IFCONFIGSET(MEASURE_MEM,C00WRITEVERBOSEN("|Measure Memory"););
+	IFCONFIGSET(MEASURE_TIME,C00WRITEVERBOSEN("|Measure Time"););
+	IFCONFIGSET(MEASURE_EXECVP,C00WRITEVERBOSEN("|execvp"););
+	IFCONFIGSET(MEASURE_VERBOSE,C00WRITEVERBOSEN("|verbose"););
+	C00WRITEVERBOSEN("|\n");
 	
 	echocheck(config->cmd,"Command not existing, usage %s","c00clupeaperf <options> command");
 

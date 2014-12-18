@@ -60,6 +60,11 @@
 	fprintf(stdout,fmt,__VA_ARGS__)					\
 	
 
+#define IFCONFIGSET(N,D)		\
+	if(BITTEST(config->flags, N)){	\
+		D			\
+	}
+
 
 struct c00_measure_conf{
 	char flags[BITNSLOTS(MAX_BITSET)];

@@ -88,6 +88,7 @@ int main( int argc, char **argv ){
 			strncpy(config->cmd,argv[i],1024);
 		}
 	}
+/*This is ugly, but does not waste sourcecode*/
 	C00WRITEVERBOSEN("Call c00clupeaperf with options :");
 	IFCONFIGSET(MEASURE_MEM,C00WRITEVERBOSEN("|Measure Memory"););
 	IFCONFIGSET(MEASURE_TIME,C00WRITEVERBOSEN("|Measure Time"););

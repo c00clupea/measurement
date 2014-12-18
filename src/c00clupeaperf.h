@@ -35,11 +35,12 @@
 
 
 
-#define MAX_BITSET 3
+#define MAX_BITSET 4
 
 #define MEASURE_TIME 1
 #define MEASURE_MEM 2
 #define MEASURE_VERBOSE 3
+#define MEASURE_EXECVP 4
 
 #define C00WRITEVERBOSE(fmt,...)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
@@ -63,6 +64,7 @@
 struct c00_measure_conf{
 	char flags[BITNSLOTS(MAX_BITSET)];
 	char cmd[1024];
+	char *argv[64];
 };
 
 struct c00_measure_result{

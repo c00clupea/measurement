@@ -16,7 +16,8 @@ static inline int __diff_timespecs(struct timespec *r, struct timespec *a, struc
 static inline int __call_system(struct c00_measure_conf *config, struct c00_measure_result *result);
 static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result);
 static inline int __calc_sec(struct timespec *t, float *r);
-
+static inline int __parse_command(char *tmpcmd, char **tmpargv);
+static inline int __call_execvp(struct c00_measure_conf *config, struct c00_measure_result *result);
 
 int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *result){
 	echocheck(config,"Sorry you need at least a config %s","struct");
@@ -27,8 +28,12 @@ int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *res
 		C00DEBUG("Troubles with clock %s"," start");
 		return ERROR;
 	}
-	
-	__call_system(config,result);
+	if(BITTEST(config->flags, MEASURE_EXECVP)){
+		__call_execvp(config,result);
+	}
+	else{
+		__call_system(config,result);
+	}
 
 	if( clock_gettime( CLOCK_REALTIME, &stop) == -1 ) {
 		C00WRITEN("Can not use stop clock\n");
@@ -69,6 +74,10 @@ int main( int argc, char **argv ){
 			BITSET(config->flags, MEASURE_VERBOSE);
 			continue;
 		}
+		if(check_argv(i,"--execvp","-e")){
+			BITSET(config->flags, MEASURE_EXECVP);
+			continue;
+		}
 		
 		if(i == argc - 1){
 			strncpy(config->cmd,argv[i],1024);
@@ -78,6 +87,9 @@ int main( int argc, char **argv ){
 	echocheck(config->cmd,"Command not existing, usage %s","c00clupeaperf <options> command");
 	
 	C00DEBUG("Command :%s",config->cmd);
+	char tmpcmd[1024];
+	strncpy(tmpcmd,config->cmd,1024);
+	__parse_command(tmpcmd,config->argv);
 
 	if(measure_exvp(config,result) != TRUE){
 		__destroy_all(config,result);
@@ -115,6 +127,26 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
+static inline int __call_execvp(struct c00_measure_conf *config, struct c00_measure_result UNUSED(*result)){
+	pid_t pid;
+	int status;
+
+	if((pid = fork()) < 0){
+		C00WRITEN("Unable to fork");
+		return ERROR;
+	}
+	else if(pid == 0){
+		if(execvp(*config->argv,config->argv) < 0){
+			C00WRITE("Unable to execute command %s", config->cmd);
+			return ERROR;
+		}
+	}
+	else {
+		while(wait(&status) != pid){}
+	}
+	return TRUE;
+}
+
 
 static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result){
 	free(config);
@@ -125,5 +157,20 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
 
 static inline int __calc_sec(struct timespec *t, float *r){
 	*r = (float)t->tv_sec + NSTOS(t->tv_nsec);
+	return TRUE;
+}
+
+static inline int __parse_command(char *tmpcmd, char **tmpargv){
+	while(*tmpcmd != '\0'){
+		while(*tmpcmd == ' ' || *tmpcmd == '\t' || *tmpcmd == '\n'){
+			*tmpcmd++ = '\0';
+		}
+		*tmpargv++ = tmpcmd;
+		while(*tmpcmd != '\0' && *tmpcmd != ' ' && *tmpcmd != '\t' && *tmpcmd != '\n'){
+			tmpcmd++;
+		}
+
+	}
+	*tmpargv = '\0';
 	return TRUE;
 }

@@ -53,9 +53,7 @@ int main( int argc, char **argv ){
 	struct c00_measure_conf *config = malloc(sizeof(struct c00_measure_conf));
 	struct c00_measure_result *result = malloc(sizeof(struct c00_measure_result));
 	result->exvptime = malloc(sizeof(struct timespec));
-#if OSDETECTED == DARWIN
-	fprintf(stdout,"You use a system (Darwin) without monothonic counter....you should approximate more measurements\n");
-#endif	
+
 
 	echocheck(argc > 1,"Sorry but you need at least one command you have %d arguments...\n",argc - 1);
 	
@@ -78,6 +76,11 @@ int main( int argc, char **argv ){
 			BITSET(config->flags, MEASURE_EXECVP);
 			continue;
 		}
+		if(check_argv(i,"--help","-h")){
+			C00WRITEN("usage: c00clupeaperf [-mtveh] \"COMMAND\"\n");
+			C00WRITEN("Options:\n--mem     -m Measure memory\n--time    -t Measure time\n--execvp  -e Call with execvp (Default system)\n--verbose -v verbose\n--help    -h does what command means\n");
+			exit(0);
+		}
 		
 		if(i == argc - 1){
 			strncpy(config->cmd,argv[i],1024);
@@ -85,6 +88,10 @@ int main( int argc, char **argv ){
 	}
 	
 	echocheck(config->cmd,"Command not existing, usage %s","c00clupeaperf <options> command");
+
+#if OSDETECTED == DARWIN
+	fprintf(stdout,"You use a system (Darwin) without monothonic counter....you should approximate more measurements\n");
+#endif	
 	
 	C00DEBUG("Command :%s",config->cmd);
 	char tmpcmd[1024];

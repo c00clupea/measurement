@@ -30,3 +30,4 @@ config.guess
 config.sub
 configure
 src/conf.h.in
+*.log

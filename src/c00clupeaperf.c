@@ -18,6 +18,9 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
 static inline int __calc_sec(struct timespec *t, float *r);
 static inline int __parse_command(char *tmpcmd, char **tmpargv);
 static inline int __call_execvp(struct c00_measure_conf *config, struct c00_measure_result *result);
+/*static inline int __write_log(struct c00_measure_conf *config, char *fmt,...);*/
+static inline int __time_as_char(char *fmt, int buffer, char *result);
+static inline int __init_logs(struct c00_measure_conf *config);
 
 int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *result){
 	echocheck(config,"Sorry you need at least a config %s","struct");
@@ -56,7 +59,7 @@ int main( int argc, char **argv ){
 
 
 	echocheck(argc > 1,"Sorry but you need at least one command you have %d arguments...\n",argc - 1);
-	/*+kommentar*/
+
 	memset(config->flags,0,BITNSLOTS(MAX_BITSET));
 
 
@@ -88,6 +91,15 @@ int main( int argc, char **argv ){
 			strncpy(config->cmd,argv[i],1024);
 		}
 	}
+
+	if(__init_logs(config)!= TRUE){
+		__destroy_all(config,result);
+		goto error;
+	}
+	
+
+	
+
 /*This is ugly, but does not waste sourcecode*/
 	C00WRITEVERBOSEN("Call c00clupeaperf with options :");
 	IFCONFIGSET(MEASURE_MEM,C00WRITEVERBOSEN("|Measure Memory"););
@@ -165,6 +177,9 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 
 
 static inline int __destroy_all(struct c00_measure_conf *config, struct c00_measure_result *result){
+	if(config->logfp){
+	        fclose(config->logfp);
+        }
 	free(config);
 	free(result->exvptime);
 	free(result);
@@ -190,3 +205,35 @@ static inline int __parse_command(char *tmpcmd, char **tmpargv){
 	*tmpargv = '\0';
 	return TRUE;
 }
+
+/*static inline int __write_log(struct c00_measure_conf *config, char *fmt,...){
+	va_list args;
+	va_start(args,fmt);
+	fprintf(config->logfp,fmt,args);
+	va_end(args);
+	return TRUE;
+	}*/
+
+static inline int __time_as_char(char *fmt, int buffer, char *result){
+	time_t rawtime;
+	struct tm *info;
+	time( &rawtime );
+
+	info = localtime( &rawtime );
+	strftime(result,buffer,fmt, info);
+	return TRUE;
+}
+
+static inline int __init_logs(struct c00_measure_conf *config){
+	char time_res[30];
+	__time_as_char(LOGDATEFMT,LOGDATEBUF,time_res);
+	char finame[PATH_MAX];
+	sprintf(finame,"%s_desc.log",time_res);
+	config->logfp = fopen(finame,"w");
+	if(!config->logfp){
+		C00WRITE("Unable to open %s for write access\n",finame);
+		return ERROR;
+	}
+	return TRUE;
+}
+

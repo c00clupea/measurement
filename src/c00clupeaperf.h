@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
+#include <stdarg.h>
 #include <limits.h>		/* for CHAR_BIT */
 #include "global.h"
 
@@ -41,6 +42,8 @@
 #define MEASURE_MEM 2
 #define MEASURE_VERBOSE 3
 #define MEASURE_EXECVP 4
+#define LOGDATEFMT "%Y%m%d%H%M"
+#define LOGDATEBUF 13 /*12 +1 (\0)*/
 
 #define C00WRITEVERBOSE(fmt,...)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
@@ -58,7 +61,9 @@
 
 #define C00WRITE(fmt,...)					\
 	fprintf(stdout,fmt,__VA_ARGS__)					\
-	
+
+#define C00LOG(fmt,...)			\
+	fprintf(config->logfp,fmt,__VA_ARGS__)	\
 
 #define IFCONFIGSET(N,D)		\
 	if(BITTEST(config->flags, N)){	\
@@ -70,6 +75,7 @@ struct c00_measure_conf{
 	char flags[BITNSLOTS(MAX_BITSET)];
 	char cmd[1024];
 	char *argv[64];
+	FILE *logfp;
 };
 
 struct c00_measure_result{

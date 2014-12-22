@@ -10,10 +10,19 @@ endif
 
 AM_CPPFLAGS = 
 
-bin_PROGRAMS = c00clupeaperf
+bin_PROGRAMS =
 
+if PERFMAIN
+bin_PROGRAMS += c00clupeaperf
+endif
+
+if PERFMAIN
 c00clupeaperf_SOURCES = c00clupeaperf.h c00clupeaperf.c
+endif
+
 
 if ISDARWIN
+if PERFMAIN
 c00clupeaperf_SOURCES += macosx_clock.h macosx_clock.c
+endif
 endif

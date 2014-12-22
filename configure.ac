@@ -73,4 +73,14 @@ AS_IF([test "$enable_writecrap" = "yes"], [
 	AC_DEFINE([WRITEC00CRAP],[],[write really verbose stdouts])
 ])
 
+AC_ARG_ENABLE([perfwithmain],
+    AS_HELP_STRING([--enable-perfwithmain], [Enable main method in perf]))
+
+AM_CONDITIONAL([PERFMAIN],false)
+
+AS_IF([test "$enable_perfwithmain" = "yes"], [
+	AC_DEFINE([PERFMAIN],[],[enable main method in perf])
+	AM_CONDITIONAL([PERFMAIN],true)
+])
+
 AC_OUTPUT

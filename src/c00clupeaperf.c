@@ -51,6 +51,15 @@ error:
 	return ERROR;
 }
 
+int init_config(struct c00_measure_conf *config){
+	memset(config->flags,0,BITNSLOTS(MAX_BITSET));
+	memset(config->ident,'\0',1024);
+	memset(config->cmd,'\0',1024);
+	memset(config->logpattern,'\0',1024);
+	return TRUE;
+}
+
+#ifdef PERFMAIN
 int main( int argc, char **argv ){
 	int i = 0;
 	struct c00_measure_conf *config = malloc(sizeof(struct c00_measure_conf));
@@ -58,11 +67,9 @@ int main( int argc, char **argv ){
 	result->exvptime = malloc(sizeof(struct timespec));
 
 
-	echocheck(argc > 1,"Sorry but you need at least one command you have %d arguments...\n",argc - 1);
+	echocheck(argc > MINARGC,"Sorry but you need at least %d commands you have %d arguments...\n",MINARGC,argc - 1);
 
-	memset(config->flags,0,BITNSLOTS(MAX_BITSET));
-
-
+	init_config(config);
 
 	for(i = 1; i < argc; i++){
 		if(check_argv(i,"--mem","-m")){
@@ -82,9 +89,17 @@ int main( int argc, char **argv ){
 			continue;
 		}
 		if(check_argv(i,"--help","-h")){
-			C00WRITEN("usage: c00clupeaperf [-mtveh] \"COMMAND\"\n");
+			C00WRITEN("usage: c00clupeaperf [-mtveh] \"IDENT\" \"COMMAND\"\n");
 			C00WRITEN("Options:\n--mem     -m Measure memory\n--time    -t Measure time\n--execvp  -e Call with execvp (Default system)\n--verbose -v verbose\n--help    -h does what command means\n");
 			exit(0);
+		}
+
+		if(i == argc - 3){
+			strncpy(config->logpattern,argv[i],1024);
+		}
+
+		if(i == argc - 2){
+			strncpy(config->ident,argv[i],1024);
 		}
 		
 		if(i == argc - 1){
@@ -92,23 +107,29 @@ int main( int argc, char **argv ){
 		}
 	}
 
+	echocheck(config->ident && config->ident[0] != '\0',"You have to set the id, usage %s \n",USAGEPATTERN);
+	echocheck(config->logpattern && config->logpattern[0] != '\0',"You have to set the logpattern, usage %s \n",USAGEPATTERN);
+
 	if(__init_logs(config)!= TRUE){
 		__destroy_all(config,result);
 		goto error;
 	}
 	
 
-	
+	char time_res[30];
+	__time_as_char(LOGDATEFMT,LOGDATEBUF,time_res);
 
 /*This is ugly, but does not waste sourcecode*/
 	C00WRITEVERBOSEN("Call c00clupeaperf with options :");
-	IFCONFIGSET(MEASURE_MEM,C00WRITEVERBOSEN("|Measure Memory"););
-	IFCONFIGSET(MEASURE_TIME,C00WRITEVERBOSEN("|Measure Time"););
-	IFCONFIGSET(MEASURE_EXECVP,C00WRITEVERBOSEN("|execvp"););
-	IFCONFIGSET(MEASURE_VERBOSE,C00WRITEVERBOSEN("|verbose"););
+	C00LOG("Measurement at %s options:",time_res);
+	IFCONFIGSET(MEASURE_MEM,C00WRITEVERBOSEN("|Measure Memory");C00LOGN("|Measure Memory"););
+	IFCONFIGSET(MEASURE_TIME,C00WRITEVERBOSEN("|Measure Time");C00LOGN("|Measure Time"););
+	IFCONFIGSET(MEASURE_EXECVP,C00WRITEVERBOSEN("|execvp");C00LOGN("|execvp"););
+	IFCONFIGSET(MEASURE_VERBOSE,C00WRITEVERBOSEN("|verbose");C00LOGN("|verbose"););
 	C00WRITEVERBOSEN("|\n");
+	C00LOGN("|\n");
 	
-	echocheck(config->cmd,"Command not existing, usage %s","c00clupeaperf <options> command");
+	echocheck(config->cmd && config->cmd[0] != '\0',"You have to set the command, usage %s \n",USAGEPATTERN);
 
 #if OSDETECTED == DARWIN
 	fprintf(stdout,"You use a system (Darwin) without monothonic counter....you should approximate more measurements\n");
@@ -137,6 +158,7 @@ error:
 	exit(1);
 }
 
+#endif
 
 static inline int __diff_timespecs(struct timespec *r, struct timespec *a, struct timespec *b){
 	r->tv_sec = a->tv_sec - b->tv_sec;
@@ -225,10 +247,8 @@ static inline int __time_as_char(char *fmt, int buffer, char *result){
 }
 
 static inline int __init_logs(struct c00_measure_conf *config){
-	char time_res[30];
-	__time_as_char(LOGDATEFMT,LOGDATEBUF,time_res);
 	char finame[PATH_MAX];
-	sprintf(finame,"%s_desc.log",time_res);
+	sprintf(finame,config->logpattern,config->ident,"desc");
 	config->logfp = fopen(finame,"w");
 	if(!config->logfp){
 		C00WRITE("Unable to open %s for write access\n",finame);

@@ -45,6 +45,10 @@
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
 
+#define MINARGC 3
+
+#define USAGEPATTERN "c00clupeaperf <options> logfilefmt ident command"
+
 #define C00WRITEVERBOSE(fmt,...)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
 		fprintf(stdout,fmt,__VA_ARGS__);	\
@@ -65,6 +69,9 @@
 #define C00LOG(fmt,...)			\
 	fprintf(config->logfp,fmt,__VA_ARGS__)	\
 
+#define C00LOGN(fmt)			\
+	fprintf(config->logfp,fmt)	\
+
 #define IFCONFIGSET(N,D)		\
 	if(BITTEST(config->flags, N)){	\
 		D			\
@@ -74,8 +81,11 @@
 struct c00_measure_conf{
 	char flags[BITNSLOTS(MAX_BITSET)];
 	char cmd[1024];
+	char ident[1024];
+	char logpattern[1024];
 	char *argv[64];
 	FILE *logfp;
+	
 };
 
 struct c00_measure_result{
@@ -84,8 +94,10 @@ struct c00_measure_result{
 };
 
 int measure_exvp(struct c00_measure_conf *config,struct c00_measure_result *result);
+int init_config(struct c00_measure_conf *config);
 
+#ifdef PERFMAIN
 int main( int argc, char **argv );
-
+#endif
 
 #endif /* _C00CLUPEAPERF_H_ */

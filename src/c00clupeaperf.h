@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <limits.h>		/* for CHAR_BIT */
+#include <pthread.h>
 #include "global.h"
 
 #if OSDETECTED == DARWIN
@@ -85,6 +86,7 @@ struct c00_measure_conf{
 	char logpattern[1024];
 	char *argv[64];
 	FILE *logfp;
+	int pid;
 	
 };
 
@@ -93,7 +95,7 @@ struct c00_measure_result{
 	int code;
 };
 
-int measure_exvp(struct c00_measure_conf *config,struct c00_measure_result *result);
+int measure_call(struct c00_measure_conf *config,struct c00_measure_result *result);
 int init_config(struct c00_measure_conf *config);
 
 #ifdef PERFMAIN

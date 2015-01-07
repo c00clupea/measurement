@@ -21,8 +21,10 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 /*static inline int __write_log(struct c00_measure_conf *config, char *fmt,...);*/
 static inline int __time_as_char(char *fmt, int buffer, char *result);
 static inline int __init_logs(struct c00_measure_conf *config);
+static void *__mem_measure(struct c00_measure_conf *config);
 
-int measure_exvp(struct c00_measure_conf *config, struct c00_measure_result *result){
+
+int measure_call(struct c00_measure_conf *config, struct c00_measure_result *result){
 	echocheck(config,"Sorry you need at least a config %s","struct");
 	struct timespec start, stop;
 
@@ -140,7 +142,7 @@ int main( int argc, char **argv ){
 	strncpy(tmpcmd,config->cmd,1024);
 	__parse_command(tmpcmd,config->argv);
 
-	if(measure_exvp(config,result) != TRUE){
+	if(measure_call(config,result) != TRUE){
 		__destroy_all(config,result);
 		goto error;
 	}
@@ -177,6 +179,10 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
+static void *__mem_measure(struct c00_measure_conf *config){
+	
+}
+
 static inline int __call_execvp(struct c00_measure_conf *config, struct c00_measure_result UNUSED(*result)){
 	pid_t pid;
 	int status;
@@ -192,6 +198,7 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 		}
 	}
 	else {
+		config->pid = pid;
 		while(wait(&status) != pid){}
 	}
 	return TRUE;

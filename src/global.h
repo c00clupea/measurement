@@ -62,6 +62,8 @@
 
 #define echoerror(M,...) C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error; 
 
+#define echochecktrue(A,M,...)if((A)) { C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error; }
+
 #define mem_check(A) check((A), "%d Out of memory.",-1)
 
 #endif /* _GLOBAL_H_ */

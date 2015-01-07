@@ -24,6 +24,8 @@ static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
 
+static pthread_t mem_thread;
+
 int measure_call(struct c00_measure_conf *config, struct c00_measure_result *result){
 	echocheck(config,"Sorry you need at least a config %s","struct");
 	struct timespec start, stop;
@@ -45,7 +47,11 @@ int measure_call(struct c00_measure_conf *config, struct c00_measure_result *res
 		C00DEBUG("Troubles with clock %s","stop");
 		return ERROR;
 	}
-
+	#if OSDETECTED == LINUX
+	if(BITTEST(config->flags, MEASURE_MEM)){
+		pthread_join(mem_thread,NULL);
+	}
+	#endif
 	__diff_timespecs(result->exvptime, &stop, &start);		
 
 	return TRUE;
@@ -64,12 +70,13 @@ int init_config(struct c00_measure_conf *config){
 #ifdef PERFMAIN
 int main( int argc, char **argv ){
 	int i = 0;
+	long lmem = 100000;
 	struct c00_measure_conf *config = malloc(sizeof(struct c00_measure_conf));
 	struct c00_measure_result *result = malloc(sizeof(struct c00_measure_result));
 	result->exvptime = malloc(sizeof(struct timespec));
 
 
-	echocheck(argc > MINARGC,"Sorry but you need at least %d commands you have %d arguments...\n",MINARGC,argc - 1);
+
 
 	init_config(config);
 
@@ -83,9 +90,15 @@ int main( int argc, char **argv ){
 				C00WRITEN("Sorry but memory neds a resolution in ms -m 100000 for 0.1 sec res");
 				exit(1);
 			}
+			lmem = atol(argv[i+1]);
+			if(lmem == 0){
+				C00WRITEN("Sorry but memory neds a resolution in ms -m 100000 for 0.1 sec res");
+				exit(1);
+			}
 			
 			#endif
-			BITSET(config->flags, MEASURE_MEM);		       
+			BITSET(config->flags, MEASURE_MEM);
+			i++;
 			continue;
 		}
 		if(check_argv(i,"--time","-t")){
@@ -101,7 +114,7 @@ int main( int argc, char **argv ){
 			continue;
 		}
 		if(check_argv(i,"--help","-h")){
-			C00WRITEN("usage: c00clupeaperf [-mtveh] \"IDENT\" \"COMMAND\"\n");
+			C00WRITE("%s\n\n",USAGEPATTERN);
 			C00WRITEN("Options:\n--mem     -m Measure memory\n--time    -t Measure time\n--execvp  -e Call with execvp (Default system)\n--verbose -v verbose\n--help    -h does what command means\n");
 			exit(0);
 		}
@@ -119,9 +132,11 @@ int main( int argc, char **argv ){
 		}
 	}
 
+	echocheck(argc > MINARGC,"Sorry but you need at least %d commands you have %d arguments...\n",MINARGC,argc - 1);
+
 	echocheck(config->ident && config->ident[0] != '\0',"You have to set the id, usage %s \n",USAGEPATTERN);
 	echocheck(config->logpattern && config->logpattern[0] != '\0',"You have to set the logpattern, usage %s \n",USAGEPATTERN);
-
+	echochecktrue(!BITTEST(config->flags, MEASURE_EXECVP) && BITTEST(config->flags, MEASURE_MEM),"You can not use system together with memcheck...use execvp (-e) usage: %s",USAGEPATTERN);
 	if(__init_logs(config)!= TRUE){
 		__destroy_all(config,result);
 		goto error;
@@ -146,11 +161,15 @@ int main( int argc, char **argv ){
 #if OSDETECTED == DARWIN
 	fprintf(stdout,"You use a system (Darwin) without monothonic counter....you should approximate more measurements\n");
 #endif	
+#if OSDETECTED == LINUX
+	fprintf(stdout,"You use a system (Linux) with monothonic counter....\n");
+#endif	
 	
 	C00DEBUG("Command :%s",config->cmd);
 	char tmpcmd[1024];
 	strncpy(tmpcmd,config->cmd,1024);
 	__parse_command(tmpcmd,config->argv);
+	config->resolution = lmem;
 
 	if(measure_call(config,result) != TRUE){
 		__destroy_all(config,result);
@@ -266,15 +285,20 @@ static void *__mem_measure(void *arg){
 
 	struct c00_measure_conf *config = (struct c00_measure_conf*)arg;
 	
+	C00WRITEN("Measure mem");
+
 	char buf[PATH_MAX];
 	
 	snprintf(buf, PATH_MAX, "/proc/%d/status", config->pid);
 	FILE *f;
 	f = fopen("test","w");
 	
-	while(!__mem_loop(f,buf)){
+	while(__mem_loop(f,buf) == TRUE){
+
 		usleep(100000);
+
 	}
+
 	return NULL;
 }
 
@@ -297,7 +321,7 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 		
 		#if OSDETECTED == LINUX
 		if(BITTEST(config->flags, MEASURE_MEM)){	
-			pthread_t mem_thread;
+			
 			int rc;
 			rc = pthread_create(&mem_thread, NULL, &__mem_measure,config);
 		}

@@ -51,7 +51,7 @@
 
 #define MINARGC 3
 
-#define USAGEPATTERN "c00clupeaperf <options> logfilefmt ident command"
+#define USAGEPATTERN "c00clupeaperf <options> logfilefmt ident command\np.ex c00clupeaperf -m 100000 -t -e \"mylog_id_%s_type_%s.log\" \"sampleid\" \"uname -mrns\""
 
 #define C00WRITEVERBOSE(fmt,...)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
@@ -90,6 +90,8 @@ struct c00_measure_conf{
 	char *argv[64];
 	FILE *logfp;
 	int pid;
+	long resolution;
+	
 	
 };
 

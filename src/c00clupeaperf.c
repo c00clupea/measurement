@@ -78,6 +78,12 @@ int main( int argc, char **argv ){
 			#if OSDETECTED != LINUX
 			C00WRITEN("Sorry, memory measurement only with Linux..");
 			exit(1);
+
+			if(i + 1 >= argc - MINARGC){
+				C00WRITEN("Sorry but memory neds a resolution in ms -m 100000 for 0.1 sec res");
+				exit(1);
+			}
+			
 			#endif
 			BITSET(config->flags, MEASURE_MEM);		       
 			continue;
@@ -290,9 +296,11 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 		config->pid = pid;
 		
 		#if OSDETECTED == LINUX
-		pthread_t mem_thread;
-		int rc;
-		rc = pthread_create(&mem_thread, NULL, &__mem_measure,config);
+		if(BITTEST(config->flags, MEASURE_MEM)){	
+			pthread_t mem_thread;
+			int rc;
+			rc = pthread_create(&mem_thread, NULL, &__mem_measure,config);
+		}
 		#endif
 		while(wait(&status) != pid){}
 	}

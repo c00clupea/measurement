@@ -24,7 +24,6 @@ static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
 
-
 int measure_call(struct c00_measure_conf *config, struct c00_measure_result *result){
 	echocheck(config,"Sorry you need at least a config %s","struct");
 	struct timespec start, stop;
@@ -76,6 +75,10 @@ int main( int argc, char **argv ){
 
 	for(i = 1; i < argc; i++){
 		if(check_argv(i,"--mem","-m")){
+			#if OSDETECTED != LINUX
+			C00WRITEN("Sorry, memory measurement only with Linux..");
+			exit(1);
+			#endif
 			BITSET(config->flags, MEASURE_MEM);		       
 			continue;
 		}
@@ -285,6 +288,7 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 	}
 	else {
 		config->pid = pid;
+		
 		#if OSDETECTED == LINUX
 		pthread_t mem_thread;
 		int rc;

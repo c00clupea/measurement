@@ -10,7 +10,7 @@ AC_PROG_CC(clang gcc)
 # this is for automakes beyond 1.14
 AM_PROG_CC_C_O
 
-AC_CHECK_HEADERS([stdio.h unistd.h stdlib.h time.h limits.h string.h pthread.h])
+AC_CHECK_HEADERS([stdio.h unistd.h stdlib.h time.h limits.h string.h pthread.h sys/wait.h])
 
 AC_TYPE_SIZE_T
 
@@ -33,6 +33,7 @@ AC_MSG_RESULT([$CLANG])
 AC_CANONICAL_HOST
 
 AM_CONDITIONAL([ISDARWIN],false)
+AM_CONDITIONAL([ISLINUX],false)
 
 case $host_os in
   darwin* )
@@ -44,6 +45,7 @@ case $host_os in
         ;;
   linux*)
         AM_CONDITIONAL([NEEDPTHREAD],true)
+	AM_CONDITIONAL([ISLINUX],true)	
 	AC_DEFINE([OSDETECTED],[LINUX],[linux])	
         ;;
    *BSD*)

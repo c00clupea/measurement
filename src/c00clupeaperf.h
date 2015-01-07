@@ -21,6 +21,8 @@
 #include <limits.h>		/* for CHAR_BIT */
 #include <pthread.h>
 #include "global.h"
+#include <sys/wait.h>
+
 
 #if OSDETECTED == DARWIN
 #include "macosx_clock.h" 
@@ -45,6 +47,7 @@
 #define MEASURE_EXECVP 4
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
+
 
 #define MINARGC 3
 

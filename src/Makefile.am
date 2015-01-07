@@ -1,5 +1,9 @@
 AM_CFLAGS =  -std=gnu99 -Wall -Wextra -pedantic -D_THREAD_SAFE
 
+if ISLINUX
+AM_CFLAGS += -lrt
+endif
+
 if NEEDPTHREAD
 AM_CFLAGS += -pthread
 endif
@@ -17,7 +21,7 @@ bin_PROGRAMS += c00clupeaperf
 endif
 
 if PERFMAIN
-c00clupeaperf_SOURCES = c00clupeaperf.h c00clupeaperf.c
+c00clupeaperf_SOURCES = c00clupeaperf.h c00clupeaperf.c global.h
 endif
 
 

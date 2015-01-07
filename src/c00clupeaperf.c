@@ -21,7 +21,8 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 /*static inline int __write_log(struct c00_measure_conf *config, char *fmt,...);*/
 static inline int __time_as_char(char *fmt, int buffer, char *result);
 static inline int __init_logs(struct c00_measure_conf *config);
-static void *__mem_measure(struct c00_measure_conf *config);
+static void *__mem_measure(void *arg);
+static inline int __mem_loop(FILE *logf, char *memf);
 
 
 int measure_call(struct c00_measure_conf *config, struct c00_measure_result *result){
@@ -179,8 +180,93 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
-static void *__mem_measure(struct c00_measure_conf *config){
+/**borrowed from http://locklessinc.com/downloads/tmem.c**/
+static inline int __mem_loop(FILE *logf, char *memf){
+	char *line;
+	char *vmsize;
+	char *vmpeak;
+	char *vmrss;
+	char *vmhwm;
+
+	size_t len;
+	FILE *f;
+
+	vmsize = NULL;
+	vmpeak = NULL;
+	vmrss = NULL;
+	vmhwm = NULL;
+	line = malloc(128);
+	len = 128;
+	f = fopen(memf,"r");
+
+	if(!f){
+		return FALSE;
+	}
+
+	while(!vmsize || !vmpeak || !vmrss || !vmhwm){
+		if(getline(&line, &len, f) == -1){
+			return FALSE;
+		}
+		/* Find VmPeak */
+		if (!strncmp(line, "VmPeak:", 7))
+		{
+			vmpeak = strdup(&line[7]);
+		}
+		
+		/* Find VmSize */
+		else if (!strncmp(line, "VmSize:", 7))
+		{
+			vmsize = strdup(&line[7]);
+		}
+		
+		/* Find VmRSS */
+		else if (!strncmp(line, "VmRSS:", 6))
+		{
+			vmrss = strdup(&line[7]);
+		}
+		
+		/* Find VmHWM */
+		else if (!strncmp(line, "VmHWM:", 6))
+		{
+			vmhwm = strdup(&line[7]);
+		}
+	}
+	free(line);
+	fclose(f);
+	/* Get rid of " kB\n"*/
+	len = strlen(vmsize);
+	vmsize[len - 4] = 0;
+	len = strlen(vmpeak);
+	vmpeak[len - 4] = 0;
+	len = strlen(vmrss);
+	vmrss[len - 4] = 0;
+	len = strlen(vmhwm);
+	vmhwm[len - 4] = 0;
+
+	fprintf(stderr, "%s\t%s\t%s\t%s\n", vmsize, vmpeak, vmrss, vmhwm);
+
+	free(vmpeak);
+	free(vmsize);
+	free(vmrss);
+	free(vmhwm);
+
+	return TRUE;
+}
+
+static void *__mem_measure(void *arg){
+
+	struct c00_measure_conf *config = (struct c00_measure_conf*)arg;
 	
+	char buf[PATH_MAX];
+	
+	snprintf(buf, PATH_MAX, "/proc/%d/status", config->pid);
+	FILE *f;
+	f = fopen("test","w");
+	
+	while(!__mem_loop(f,buf)){
+		usleep(100000);
+	}
+	return NULL;
 }
 
 static inline int __call_execvp(struct c00_measure_conf *config, struct c00_measure_result UNUSED(*result)){
@@ -199,6 +285,11 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 	}
 	else {
 		config->pid = pid;
+		#if OSDETECTED == LINUX
+		pthread_t mem_thread;
+		int rc;
+		rc = pthread_create(&mem_thread, NULL, &__mem_measure,config);
+		#endif
 		while(wait(&status) != pid){}
 	}
 	return TRUE;

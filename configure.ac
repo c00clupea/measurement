@@ -10,7 +10,7 @@ AC_PROG_CC(clang gcc)
 # this is for automakes beyond 1.14
 AM_PROG_CC_C_O
 
-AC_CHECK_HEADERS([stdio.h unistd.h stdlib.h time.h limits.h string.h])
+AC_CHECK_HEADERS([stdio.h unistd.h stdlib.h time.h limits.h string.h pthread.h])
 
 AC_TYPE_SIZE_T
 

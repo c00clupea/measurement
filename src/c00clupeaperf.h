@@ -94,7 +94,15 @@ struct c00_measure_conf{
 	long resolution;
 	long cresolution;
 	
-	
+};
+
+struct c00_stat_rem{
+	long utime;
+	long stime;
+	long cutime;
+	long cstime;
+	long uptime;
+	char init;
 };
 
 struct c00_measure_result{
@@ -102,7 +110,7 @@ struct c00_measure_result{
 	int code;
 };
 
-/**borrowed from http://www.cs.tufts.edu/comp/111/assignments/a3/proc.c**/
+/**borrowed from shttp://www.cs.tufts.edu/comp/111/assignments/a3/proc.c**/
 
 struct c00_stat { 
     int pid;			// %d 

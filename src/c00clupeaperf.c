@@ -23,6 +23,7 @@ static inline int __time_as_char(char *fmt, int buffer, char *result);
 static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
+static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat);
 
 static pthread_t mem_thread;
 static pthread_t cpu_thread;
@@ -234,17 +235,39 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
-static inline int __stat_loop(FILE *logf, char *statf){
+static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat){
 	const char *format = "%d %s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %lu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %d %d %lu %lu %llu";
 	FILE *f;
 	f = fopen(statf,"r");
-
 	if(!f){
-	return FALSE;
-}
+		return FALSE;
+	}
+
+	FILE *fp;
+	fp = fopen("/proc/stat","r");
+	if(!fp){
+		return FALSE;
+	}
+
+	char ccpu[4];
+	char clcpu[256];
+
+	const char *formatstat = "%s %s";
+	long fiffies = 0;
+	if(2 == fscanf(fp, formatstat,ccpu,clcpu)){
+		char *ptr;
+		char delimit[] = " ";
+		ptr = strtok(clcpu,delimit);
+
+		while(ptr != NULL){
+			fiffies += atol(ptr);
+			ptr = strtok(NULL,delimit);
+		}
+	}
+
 	struct c00_stat *s;
 	s = malloc(sizeof(struct c00_stat));
-	if (42==fscanf(proc, format, 
+	if (42==fscanf(f, format, 
 	    &s->pid,
 	    s->comm,
 	    &s->state,
@@ -288,15 +311,38 @@ static inline int __stat_loop(FILE *logf, char *statf){
 	    &s->policy,
 	    &s->delayacct_blkio_ticks
 		)){
-	fclose(f);
-	fprintf(stdout,"pid %d",s->pid);
-	free(s);
-	return TRUE;
-}else{
-	fclose(f);
-	free(s);
-	return FALSE;
+		fclose(f);
+		fclose(fp);
+		fprintf(stderr,"pid %d\n",s->pid);
+		if(oldstat->init != TRUE){
+	__calc_cpu_perf(s,fiffies,oldstat);
+			
+		}
+		oldstat->init = FALSE;
+		oldstat->utime = s->utime;
+		oldstat->stime = s->stime;
+		oldstat->cutime = s->cutime;
+		oldstat->cstime = s->cstime;
+		oldstat->uptime = fiffies;
+		free(s);
+		return TRUE;
+	}else{
+		/**last one**/
+		
+		fclose(f);
+		fclose(fp);
+		free(s);
+		return FALSE;
+	}
 }
+
+static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat){
+	long rutime = s->utime - oldstat->utime;
+	long rstime = s->stime - oldstat->stime;
+	long rcutime = s->cutime - oldstat->cutime;
+	long rcstime = s->cstime - oldstat->cstime;
+	long ruptime = fiffies - oldstat->uptime;
+	fprintf(stderr,"rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu",ruptime,rutime,rstime,rcutime,rcstime);
 }
 
 /**borrowed from http://locklessinc.com/downloads/tmem.c**/
@@ -374,13 +420,20 @@ static inline int __mem_loop(FILE *logf, char *memf){
 
 static void *__cpu_measure(void *arg){
 	struct c00_measure_conf *config = (struct c00_measure_conf*)arg;
-	C00WRITEN("Measure CPU");
+	struct c00_stat_rem *stat_rem = malloc(sizeof(struct c00_stat_rem));
 	char buf[PATH_MAX];
-	snprintf(buf, PATH_MAX, "/proc/%d/stat",config>pid);
+
+	snprintf(buf, PATH_MAX, "/proc/%d/stat",config->pid);
 	FILE *f;
 	f = fopen("cputest","w");
+	stat_rem->utime = 0;
+	stat_rem->stime = 0;
+	stat_rem->cutime = 0;
+	stat_rem->cstime = 0;
+	stat_rem->uptime = 0;
+	stat_rem->init = TRUE;
 
-	while(__mem_loop(f,buf) == TRUE){
+	while(__stat_loop(f,buf,stat_rem) == TRUE){
 		usleep(config->cresolution);
 	}
 	fclose(f);
@@ -391,7 +444,7 @@ static void *__mem_measure(void *arg){
 
 	struct c00_measure_conf *config = (struct c00_measure_conf*)arg;
 	
-	C00WRITEN("Measure mem");
+//	C00WRITEN("Measure mem");
 
 	char buf[PATH_MAX];
 	

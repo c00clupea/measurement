@@ -23,6 +23,7 @@ static inline int __time_as_char(char *fmt, int buffer, char *result);
 static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
+static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s);
 static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat);
 
 static pthread_t mem_thread;
@@ -235,7 +236,7 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
-static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat){
+static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s){
 	const char *format = "%d %s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %lu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %d %d %lu %lu %llu";
 	FILE *f;
 	f = fopen(statf,"r");
@@ -249,14 +250,16 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 		return FALSE;
 	}
 
-	char ccpu[4];
+	//char ccpu[4];
 	char clcpu[256];
+//	int nbytes = 256;
 
-	const char *formatstat = "%s %s";
+//	const char *formatstat = "%s %s";
 	long fiffies = 0;
-	if(2 == fscanf(fp, formatstat,ccpu,clcpu)){
+	if(0 < fgets(&clcpu,256,fp)){
 		char *ptr;
 		char delimit[] = " ";
+		//fprintf(stderr,"read %s",clcpu);
 		ptr = strtok(clcpu,delimit);
 
 		while(ptr != NULL){
@@ -265,8 +268,8 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 		}
 	}
 
-	struct c00_stat *s;
-	s = malloc(sizeof(struct c00_stat));
+//	struct c00_stat *s;
+//	s = malloc(sizeof(struct c00_stat));
 	if (42==fscanf(f, format, 
 	    &s->pid,
 	    s->comm,
@@ -313,25 +316,26 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 		)){
 		fclose(f);
 		fclose(fp);
-		fprintf(stderr,"pid %d\n",s->pid);
-		if(oldstat->init != TRUE){
-	__calc_cpu_perf(s,fiffies,oldstat);
+		//fprintf(stderr,"pid %d\n",s->pid);
+		if(oldstat->init == TRUE){
+			oldstat->uptime = fiffies;
 			
 		}
+		__calc_cpu_perf(s,fiffies,oldstat);
 		oldstat->init = FALSE;
 		oldstat->utime = s->utime;
 		oldstat->stime = s->stime;
 		oldstat->cutime = s->cutime;
 		oldstat->cstime = s->cstime;
 		oldstat->uptime = fiffies;
-		free(s);
+		//free(s);
 		return TRUE;
 	}else{
 		/**last one**/
 		
 		fclose(f);
 		fclose(fp);
-		free(s);
+		//free(s);
 		return FALSE;
 	}
 }
@@ -342,7 +346,11 @@ static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_s
 	long rcutime = s->cutime - oldstat->cutime;
 	long rcstime = s->cstime - oldstat->cstime;
 	long ruptime = fiffies - oldstat->uptime;
-	fprintf(stderr,"rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu",ruptime,rutime,rstime,rcutime,rcstime);
+//oldstat init kann true sein, dann sind wir beim zeitpunkt 0...
+	if(oldstat->init == TRUE){
+		fprintf(stderr,"This is the first call ");
+	}
+	fprintf(stderr,"fiffies: %lu, rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu",fiffies,ruptime,rutime,rstime,rcutime,rcstime);
 }
 
 /**borrowed from http://locklessinc.com/downloads/tmem.c**/
@@ -421,6 +429,7 @@ static inline int __mem_loop(FILE *logf, char *memf){
 static void *__cpu_measure(void *arg){
 	struct c00_measure_conf *config = (struct c00_measure_conf*)arg;
 	struct c00_stat_rem *stat_rem = malloc(sizeof(struct c00_stat_rem));
+	struct c00_stat *stat = malloc(sizeof(struct c00_stat));
 	char buf[PATH_MAX];
 
 	snprintf(buf, PATH_MAX, "/proc/%d/stat",config->pid);
@@ -433,9 +442,11 @@ static void *__cpu_measure(void *arg){
 	stat_rem->uptime = 0;
 	stat_rem->init = TRUE;
 
-	while(__stat_loop(f,buf,stat_rem) == TRUE){
+	while(__stat_loop(f,buf,stat_rem,stat) == TRUE){
 		usleep(config->cresolution);
 	}
+	free(stat_rem);
+	free(stat);
 	fclose(f);
 	return NULL;
 }

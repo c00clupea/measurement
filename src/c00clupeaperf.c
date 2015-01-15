@@ -205,10 +205,12 @@ int main( int argc, char **argv ){
 		goto error;
 	}
 	if(BITTEST(config->flags, MEASURE_TIME)){
-		C00WRITE("Result time %ld sec %ld ns\n",result->exvptime->tv_sec,result->exvptime->tv_nsec);
+//		C00WRITE("Result time %ld sec %ld ns\n",result->exvptime->tv_sec,result->exvptime->tv_nsec);
 		float res =  0;
 		__calc_sec(result->exvptime, &res);
-		C00WRITE("Result time %f sec\n",res);
+//		C00WRITE("Result time %f sec\n",res);
+		fprintf(config->logfp,"%ld.%ld;%f\n"result->exvptime->tv_sec, result.>exvptime->tv_nsec, res);
+		fflush(config->logfp);
 		
 	}
 	__destroy_all(config,result);

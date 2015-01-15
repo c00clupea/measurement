@@ -90,6 +90,8 @@ struct c00_measure_conf{
 	char logpattern[1024];
 	char *argv[64];
 	FILE *logfp;
+	FILE *statfp;
+	FILE *memfp;
 	int pid;
 	long resolution;
 	long cresolution;

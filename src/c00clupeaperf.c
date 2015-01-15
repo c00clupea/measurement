@@ -24,7 +24,8 @@ static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
 static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s);
-static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat);
+static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf);
+
 
 static pthread_t mem_thread;
 static pthread_t cpu_thread;
@@ -256,7 +257,7 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 
 //	const char *formatstat = "%s %s";
 	long fiffies = 0;
-	if(0 < fgets(&clcpu,256,fp)){
+	if(fgets(&clcpu,256,fp) > 0){
 		char *ptr;
 		char delimit[] = " ";
 		//fprintf(stderr,"read %s",clcpu);
@@ -321,13 +322,14 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 			oldstat->uptime = fiffies;
 			
 		}
-		__calc_cpu_perf(s,fiffies,oldstat);
+		__calc_cpu_perf(s,fiffies,oldstat,logf);
 		oldstat->init = FALSE;
 		oldstat->utime = s->utime;
 		oldstat->stime = s->stime;
 		oldstat->cutime = s->cutime;
 		oldstat->cstime = s->cstime;
 		oldstat->uptime = fiffies;
+
 		//free(s);
 		return TRUE;
 	}else{
@@ -335,22 +337,30 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 		
 		fclose(f);
 		fclose(fp);
+
 		//free(s);
 		return FALSE;
 	}
+	return ERROR;//Never reach...just for compiler
 }
 
-static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat){
+static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat, FILE *logf){
 	long rutime = s->utime - oldstat->utime;
 	long rstime = s->stime - oldstat->stime;
 	long rcutime = s->cutime - oldstat->cutime;
 	long rcstime = s->cstime - oldstat->cstime;
 	long ruptime = fiffies - oldstat->uptime;
 //oldstat init kann true sein, dann sind wir beim zeitpunkt 0...
+	float cpuperc = 0.0f;
 	if(oldstat->init == TRUE){
 		fprintf(stderr,"This is the first call ");
 	}
-	fprintf(stderr,"fiffies: %lu, rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu",fiffies,ruptime,rutime,rstime,rcutime,rcstime);
+	else{
+		cpuperc = ((rutime + rstime + rcutime + rcstime)/ruptime)/0.01;
+	}
+	fprintf(logf,"fiffies: %lu, rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu, perc: %f\n",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
+	fflush(logf);
+	return TRUE;
 }
 
 /**borrowed from http://locklessinc.com/downloads/tmem.c**/
@@ -416,8 +426,8 @@ static inline int __mem_loop(FILE *logf, char *memf){
 	len = strlen(vmhwm);
 	vmhwm[len - 4] = 0;
 
-	fprintf(stderr, "%s\t%s\t%s\t%s\n", vmsize, vmpeak, vmrss, vmhwm);
-
+	fprintf(logf, "%s\t%s\t%s\t%s\n", vmsize, vmpeak, vmrss, vmhwm);
+	fflush(logf);
 	free(vmpeak);
 	free(vmsize);
 	free(vmrss);
@@ -433,8 +443,8 @@ static void *__cpu_measure(void *arg){
 	char buf[PATH_MAX];
 
 	snprintf(buf, PATH_MAX, "/proc/%d/stat",config->pid);
-	FILE *f;
-	f = fopen("cputest","w");
+	//FILE *f;
+	//f = fopen("cputest","w");
 	stat_rem->utime = 0;
 	stat_rem->stime = 0;
 	stat_rem->cutime = 0;
@@ -442,12 +452,12 @@ static void *__cpu_measure(void *arg){
 	stat_rem->uptime = 0;
 	stat_rem->init = TRUE;
 
-	while(__stat_loop(f,buf,stat_rem,stat) == TRUE){
+	while(__stat_loop(config->statfp,buf,stat_rem,stat) == TRUE){
 		usleep(config->cresolution);
 	}
 	free(stat_rem);
 	free(stat);
-	fclose(f);
+	//fclose(f);
 	return NULL;
 }
 
@@ -460,15 +470,15 @@ static void *__mem_measure(void *arg){
 	char buf[PATH_MAX];
 	
 	snprintf(buf, PATH_MAX, "/proc/%d/status", config->pid);
-	FILE *f;
-	f = fopen("test","w");
+	//FILE *f;
+	//f = fopen("test","w");
 	
-	while(__mem_loop(f,buf) == TRUE){
+	while(__mem_loop(config->memfp,buf) == TRUE){
 
 		usleep(config->resolution);
 
 	}
-	fclose(f);
+	//fclose(f);
 	return NULL;
 }
 
@@ -511,6 +521,12 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
 	if(config->logfp){
 	        fclose(config->logfp);
         }
+	if(config->memfp){
+		fclose(config->memfp);
+	}
+	if(config->statfp){
+		fclose(config->statfp);
+	}
 	free(config);
 	free(result->exvptime);
 	free(result);
@@ -562,6 +578,24 @@ static inline int __init_logs(struct c00_measure_conf *config){
 	if(!config->logfp){
 		C00WRITE("Unable to open %s for write access\n",finame);
 		return ERROR;
+	}
+	if(BITTEST(config->flags, MEASURE_CPU)){
+		char statname[PATH_MAX];
+		sprintf(statname, config->logpattern,config->ident,"stat");
+		config->statfp = fopen(statname,"w");
+		if(!config->statfp){
+			C00WRITE("Unable to open %s for write access\n",statname);
+			return ERROR;
+		}
+	}
+	if(BITTEST(config->flags, MEASURE_CPU)){
+		char memname[PATH_MAX];
+		sprintf(memname, config->logpattern,config->ident,"mem");
+		config->memfp = fopen(memname,"w");
+		if(!config->memfp){
+			C00WRITE("Unable to open %s for write access\n",memname);
+			return ERROR;
+		}
 	}
 	return TRUE;
 }

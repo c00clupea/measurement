@@ -25,6 +25,7 @@ static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
 static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s);
 static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf);
+static inline int __test_init_log(char *fn,char *initline);
 
 
 static pthread_t mem_thread;
@@ -83,9 +84,6 @@ int main( int argc, char **argv ){
 	struct c00_measure_result *result = malloc(sizeof(struct c00_measure_result));
 	result->exvptime = malloc(sizeof(struct timespec));
 
-
-
-
 	init_config(config);
 
 	for(i = 1; i < argc; i++){
@@ -108,6 +106,15 @@ int main( int argc, char **argv ){
 			BITSET(config->flags, MEASURE_MEM);
 			i++;
 			continue;
+		}
+		if(check_argv(i,"--addon","-a")){
+			if(i + 1 >= argc - MINARGC){
+				C00WRITEN("Sorry but append needs some value");
+				exit(1);
+			}
+			BITSET(config->flags,HASAPPEND);
+			strncpy(config->appendst,argv[i+1],1024);
+			i++;
 		}
 		if(check_argv(i,"--time","-t")){
 			BITSET(config->flags, MEASURE_TIME);
@@ -348,7 +355,8 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 
 static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat, FILE *logf){
 	long rutime = s->utime - oldstat->utime;
-	long rstime = s->stime - oldstat->stime;
+	long rstime = s->stime - oldstat-
+>stime;
 	long rcutime = s->cutime - oldstat->cutime;
 	long rcstime = s->cstime - oldstat->cstime;
 	long ruptime = fiffies - oldstat->uptime;
@@ -360,7 +368,7 @@ static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_s
 	else{
 		cpuperc = ((rutime + rstime + rcutime + rcstime)/ruptime)/0.01;
 	}
-	fprintf(logf,"fiffies: %lu, rupt: %lu, rut: %lu, rst: %lu, rcu: %lu, rcs: %lu, perc: %f\n",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
+	fprintf(logf,"%lu,%lu,%lu,%lu,%lu,%lu,%f\n",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
 	fflush(logf);
 	return TRUE;
 }
@@ -428,7 +436,7 @@ static inline int __mem_loop(FILE *logf, char *memf){
 	len = strlen(vmhwm);
 	vmhwm[len - 4] = 0;
 
-	fprintf(logf, "%s\t%s\t%s\t%s\n", vmsize, vmpeak, vmrss, vmhwm);
+	fprintf(logf, "%s,%s,%s,%s\n", vmsize, vmpeak, vmrss, vmhwm);
 	fflush(logf);
 	free(vmpeak);
 	free(vmsize);
@@ -573,10 +581,28 @@ static inline int __time_as_char(char *fmt, int buffer, char *result){
 	return TRUE;
 }
 
+static inline int __test_init_log(char *fn,char *initline){
+	
+	if(!fopen(fn),'r'){
+		FILE *fd;
+		fd = fopen(fn,'w');
+		if(!fd){
+			//other problem
+			return ERROR;
+		}
+		fprintf(fd,initline);
+		fclose(fd);
+	}
+	return TRUE;
+}
+
 static inline int __init_logs(struct c00_measure_conf *config){
 	char finame[PATH_MAX];
 	sprintf(finame,config->logpattern,config->ident,"desc");
-	config->logfp = fopen(finame,"w");
+	if(__test_init_log(finame,"time,test,size,run\n") != TRUE){
+		return ERROR;
+	}
+	config->logfp = fopen(finame,"a");
 	if(!config->logfp){
 		C00WRITE("Unable to open %s for write access\n",finame);
 		return ERROR;
@@ -584,7 +610,11 @@ static inline int __init_logs(struct c00_measure_conf *config){
 	if(BITTEST(config->flags, MEASURE_CPU)){
 		char statname[PATH_MAX];
 		sprintf(statname, config->logpattern,config->ident,"stat");
-		config->statfp = fopen(statname,"w");
+
+		if(__test_init_log(statname,"fiffies,uptime,utime,stime,cutime,cstime,cpupercent\n") != TRUE){
+			return ERROR;
+		}
+		config->statfp = fopen(statname,"a");
 		if(!config->statfp){
 			C00WRITE("Unable to open %s for write access\n",statname);
 			return ERROR;
@@ -593,7 +623,10 @@ static inline int __init_logs(struct c00_measure_conf *config){
 	if(BITTEST(config->flags, MEASURE_CPU)){
 		char memname[PATH_MAX];
 		sprintf(memname, config->logpattern,config->ident,"mem");
-		config->memfp = fopen(memname,"w");
+		if(__test_init_log(memname,"vmsize,vmpeak,vmrss,vmhwm\n") != TRUE){
+			return ERROR;
+		}
+		config->memfp = fopen(memname,"a");
 		if(!config->memfp){
 			C00WRITE("Unable to open %s for write access\n",memname);
 			return ERROR;

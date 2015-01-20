@@ -39,15 +39,17 @@
 
 
 
-#define MAX_BITSET 5
+#define MAX_BITSET 6
 
 #define MEASURE_TIME 1
 #define MEASURE_MEM 2
 #define MEASURE_VERBOSE 3
 #define MEASURE_EXECVP 4
 #define MEASURE_CPU 5
+#define HASAPPEND 6
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
+
 
 
 #define MINARGC 3
@@ -95,6 +97,7 @@ struct c00_measure_conf{
 	int pid;
 	long resolution;
 	long cresolution;
+	char appendst[1024];
 	
 };
 

@@ -50,6 +50,7 @@
 #define NEWLOG 7
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
+#define LOGLINELEN 1024
 
 
 

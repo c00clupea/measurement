@@ -22,11 +22,13 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 static inline int __time_as_char(char *fmt, int buffer, char *result);
 static inline int __init_logs(struct c00_measure_conf *config);
 static void *__mem_measure(void *arg);
-static inline int __mem_loop(FILE *logf, char *memf);
-static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s);
-static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf);
+static inline int __mem_loop(FILE *logf, char *memf, struct c00_measure_conf *config);
+static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s,struct c00_measure_conf *config);
+static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf, struct c00_measure_conf *config);
 static inline int __test_init_log(char *fn,char *initline, struct c00_measure_conf *config);
 static inline int __clear_log_when_user_wishes(struct c00_measure_conf *config, char *fn);
+static inline int __print_to_log(struct c00_measure_conf *config, FILE *fd,char *fmt,...);
+
 
 
 static pthread_t mem_thread;
@@ -223,8 +225,9 @@ int main( int argc, char **argv ){
 		float res =  0;
 		__calc_sec(result->exvptime, &res);
 //		C00WRITE("Result time %f sec\n",res);
-		fprintf(config->logfp,"%ld.%ld,%f\n",result->exvptime->tv_sec, result->exvptime->tv_nsec, res);
-		fflush(config->logfp);
+//		fprintf(config->logfp,"%ld.%ld,%f\n",result->exvptime->tv_sec, result->exvptime->tv_nsec, res);
+//		fflush(config->logfp);
+		__print_to_log(config,config->logfp,"%ld.%ld,%f",result->exvptime->tv_sec, result->exvptime->tv_nsec, res);
 		
 	}
 	__destroy_all(config,result);
@@ -253,7 +256,7 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	
 }
 
-static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s){
+static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s, struct c00_measure_conf *config){
 	const char *format = "%d %s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %lu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %d %d %lu %lu %llu";
 	FILE *f;
 	f = fopen(statf,"r");
@@ -338,7 +341,7 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 			oldstat->uptime = fiffies;
 			
 		}
-		__calc_cpu_perf(s,fiffies,oldstat,logf);
+		__calc_cpu_perf(s,fiffies,oldstat,logf,config);
 		oldstat->init = FALSE;
 		oldstat->utime = s->utime;
 		oldstat->stime = s->stime;
@@ -360,7 +363,7 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 	return ERROR;//Never reach...just for compiler
 }
 
-static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat, FILE *logf){
+static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat, FILE *logf, struct c00_measure_conf *config){
 	long rutime = s->utime - oldstat->utime;
 	long rstime = s->stime - oldstat->stime;
 	long rcutime = s->cutime - oldstat->cutime;
@@ -374,13 +377,14 @@ static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_s
 	else{
 		cpuperc = ((rutime + rstime + rcutime + rcstime)/ruptime)/0.01;
 	}
-	fprintf(logf,"%lu,%lu,%lu,%lu,%lu,%lu,%f\n",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
-	fflush(logf);
+//	fprintf(logf,"%lu,%lu,%lu,%lu,%lu,%lu,%f\n",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
+//	fflush(logf);
+	__print_to_log(config,logf,"%lu,%lu,%lu,%lu,%lu,%lu,%f",fiffies,ruptime,rutime,rstime,rcutime,rcstime,cpuperc);
 	return TRUE;
 }
 
 /**borrowed from http://locklessinc.com/downloads/tmem.c**/
-static inline int __mem_loop(FILE *logf, char *memf){
+static inline int __mem_loop(FILE *logf, char *memf, struct c00_measure_conf *config){
 	char *line;
 	char *vmsize;
 	char *vmpeak;
@@ -442,13 +446,31 @@ static inline int __mem_loop(FILE *logf, char *memf){
 	len = strlen(vmhwm);
 	vmhwm[len - 4] = 0;
 
-	fprintf(logf, "%s,%s,%s,%s\n", vmsize, vmpeak, vmrss, vmhwm);
+//	fprintf(logf, "%s,%s,%s,%s\n", vmsize, vmpeak, vmrss, vmhwm);
+	__print_to_log(config,logf,"%s,%s,%s,%s", vmsize, vmpeak, vmrss, vmhwm);
 	fflush(logf);
 	free(vmpeak);
 	free(vmsize);
 	free(vmrss);
 	free(vmhwm);
 
+	return TRUE;
+}
+
+static inline int __print_to_log(struct c00_measure_conf *config, FILE *fd, char *fmt,...){
+	char buffer[LOGLINELEN];
+	int cx;
+	va_list argp;
+	va_start(argp, fmt);
+	cx = vsnprintf(buffer,LOGLINELEN,fmt,argp);
+	if(BITTEST(config->flags, HASAPPEND)){
+		snprintf(buffer+cx,LOGLINELEN-cx,",%s\n",config->appendst);
+	} else{
+		snprintf(buffer+cx,LOGLINELEN-cx,"\n");
+	}
+	va_end(argp);
+	fprintf(fd,buffer);
+	fflush(fd);
 	return TRUE;
 }
 
@@ -468,7 +490,7 @@ static void *__cpu_measure(void *arg){
 	stat_rem->uptime = 0;
 	stat_rem->init = TRUE;
 
-	while(__stat_loop(config->statfp,buf,stat_rem,stat) == TRUE){
+	while(__stat_loop(config->statfp,buf,stat_rem,stat,config) == TRUE){
 		usleep(config->cresolution);
 	}
 	free(stat_rem);
@@ -489,7 +511,7 @@ static void *__mem_measure(void *arg){
 	//FILE *f;
 	//f = fopen("test","w");
 	
-	while(__mem_loop(config->memfp,buf) == TRUE){
+	while(__mem_loop(config->memfp,buf,config) == TRUE){
 
 		usleep(config->resolution);
 

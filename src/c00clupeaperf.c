@@ -25,7 +25,8 @@ static void *__mem_measure(void *arg);
 static inline int __mem_loop(FILE *logf, char *memf);
 static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s);
 static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf);
-static inline int __test_init_log(char *fn,char *initline);
+static inline int __test_init_log(char *fn,char *initline, struct c00_measure_conf *config);
+static inline int __clear_log_when_user_wishes(struct c00_measure_conf *config, char *fn);
 
 
 static pthread_t mem_thread;
@@ -108,12 +109,14 @@ int main( int argc, char **argv ){
 			continue;
 		}
 		if(check_argv(i,"--addon","-a")){
-			if(i + 1 >= argc - MINARGC){
+			if(i + 2 >= argc - MINARGC){
 				C00WRITEN("Sorry but append needs some value");
 				exit(1);
 			}
 			BITSET(config->flags,HASAPPEND);
 			strncpy(config->appendst,argv[i+1],1024);
+			strncpy(config->appendhead,argv[i+2],1024);
+			i++;//ugly but better to read
 			i++;
 		}
 		if(check_argv(i,"--time","-t")){
@@ -122,6 +125,10 @@ int main( int argc, char **argv ){
 		}
 		if(check_argv(i,"--verbose","-v")){
 			BITSET(config->flags, MEASURE_VERBOSE);
+			continue;
+		}
+		if(check_argv(i,"--new","-n")){
+			BITSET(config->flags, NEWLOG);
 			continue;
 		}
 		if(check_argv(i,"--execvp","-e")){
@@ -149,7 +156,7 @@ int main( int argc, char **argv ){
 		}
 		if(check_argv(i,"--help","-h")){
 			C00WRITE("%s\n\n",USAGEPATTERN);
-			C00WRITEN("Options:\n--mem     -m Measure memory\n--time    -t Measure time\n--execvp  -e Call with execvp (Default system)\n--verbose -v verbose\n--help    -h does what command means\n");
+			C00WRITEN("Options:\n--mem     -m <resolution> Measure memory\n--time    -t Measure time\n--execvp  -e Call with execvp (Default system)\n--verbose -v verbose\n--help    -h does what command means\n--addon -a append next string to log\n--cpu -c <resolution> measure cpu\n--new -n clear logs when existing\n");
 			exit(0);
 		}
 
@@ -216,7 +223,7 @@ int main( int argc, char **argv ){
 		float res =  0;
 		__calc_sec(result->exvptime, &res);
 //		C00WRITE("Result time %f sec\n",res);
-		fprintf(config->logfp,"%ld.%ld;%f\n"result->exvptime->tv_sec, result.>exvptime->tv_nsec, res);
+		fprintf(config->logfp,"%ld.%ld,%f\n",result->exvptime->tv_sec, result->exvptime->tv_nsec, res);
 		fflush(config->logfp);
 		
 	}
@@ -266,7 +273,7 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 
 //	const char *formatstat = "%s %s";
 	long fiffies = 0;
-	if(fgets(&clcpu,256,fp) > 0){
+	if(fgets(clcpu,256,fp)){
 		char *ptr;
 		char delimit[] = " ";
 		//fprintf(stderr,"read %s",clcpu);
@@ -355,8 +362,7 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 
 static inline int __calc_cpu_perf(struct c00_stat *s, long fiffies, struct c00_stat_rem *oldstat, FILE *logf){
 	long rutime = s->utime - oldstat->utime;
-	long rstime = s->stime - oldstat-
->stime;
+	long rstime = s->stime - oldstat->stime;
 	long rcutime = s->cutime - oldstat->cutime;
 	long rcstime = s->cstime - oldstat->cstime;
 	long ruptime = fiffies - oldstat->uptime;
@@ -512,13 +518,13 @@ static inline int __call_execvp(struct c00_measure_conf *config, struct c00_meas
 		#if OSDETECTED == LINUX
 		if(BITTEST(config->flags, MEASURE_MEM)){	
 			
-			int rc;
-			rc = pthread_create(&mem_thread, NULL, &__mem_measure,config);
+			
+			pthread_create(&mem_thread, NULL, &__mem_measure,config);
 		}
 		if(BITTEST(config->flags, MEASURE_CPU)){	
 			
-			int rcc;
-			rcc = pthread_create(&cpu_thread, NULL, &__cpu_measure,config);
+			
+			pthread_create(&cpu_thread, NULL, &__cpu_measure,config);
 		}
 		#endif
 		while(wait(&status) != pid){}
@@ -581,25 +587,38 @@ static inline int __time_as_char(char *fmt, int buffer, char *result){
 	return TRUE;
 }
 
-static inline int __test_init_log(char *fn,char *initline){
-	
-	if(!fopen(fn),'r'){
+static inline int __test_init_log(char *fn,char *initline, struct c00_measure_conf *config){
+	__clear_log_when_user_wishes(config, fn);
+	if(!fopen(fn,"r")){
 		FILE *fd;
-		fd = fopen(fn,'w');
+		fd = fopen(fn,"w");
 		if(!fd){
 			//other problem
 			return ERROR;
 		}
 		fprintf(fd,initline);
+		if(BITTEST(config->flags,HASAPPEND)){
+			fprintf(fd,",%s",config->appendhead);
+		}
+		fprintf(fd,"\n");
 		fclose(fd);
 	}
 	return TRUE;
 }
 
+
+static inline int __clear_log_when_user_wishes(struct c00_measure_conf *config, char *fn){
+	if(BITTEST(config->flags, NEWLOG)){
+		remove(fn);
+	}
+	return TRUE;
+}
+
+
 static inline int __init_logs(struct c00_measure_conf *config){
 	char finame[PATH_MAX];
-	sprintf(finame,config->logpattern,config->ident,"desc");
-	if(__test_init_log(finame,"time,test,size,run\n") != TRUE){
+	sprintf(finame,config->logpattern,config->ident,"time");
+	if(__test_init_log(finame,"time,test,size,run",config) != TRUE){
 		return ERROR;
 	}
 	config->logfp = fopen(finame,"a");
@@ -611,7 +630,7 @@ static inline int __init_logs(struct c00_measure_conf *config){
 		char statname[PATH_MAX];
 		sprintf(statname, config->logpattern,config->ident,"stat");
 
-		if(__test_init_log(statname,"fiffies,uptime,utime,stime,cutime,cstime,cpupercent\n") != TRUE){
+		if(__test_init_log(statname,"fiffies,uptime,utime,stime,cutime,cstime,cpupercent",config) != TRUE){
 			return ERROR;
 		}
 		config->statfp = fopen(statname,"a");
@@ -623,7 +642,7 @@ static inline int __init_logs(struct c00_measure_conf *config){
 	if(BITTEST(config->flags, MEASURE_CPU)){
 		char memname[PATH_MAX];
 		sprintf(memname, config->logpattern,config->ident,"mem");
-		if(__test_init_log(memname,"vmsize,vmpeak,vmrss,vmhwm\n") != TRUE){
+		if(__test_init_log(memname,"vmsize,vmpeak,vmrss,vmhwm",config) != TRUE){
 			return ERROR;
 		}
 		config->memfp = fopen(memname,"a");

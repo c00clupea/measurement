@@ -39,7 +39,7 @@
 
 
 
-#define MAX_BITSET 6
+#define MAX_BITSET 7
 
 #define MEASURE_TIME 1
 #define MEASURE_MEM 2
@@ -47,6 +47,7 @@
 #define MEASURE_EXECVP 4
 #define MEASURE_CPU 5
 #define HASAPPEND 6
+#define NEWLOG 7
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
 
@@ -74,10 +75,10 @@
 	fprintf(stdout,fmt,__VA_ARGS__)					\
 
 #define C00LOG(fmt,...)			\
-	fprintf(config->logfp,fmt,__VA_ARGS__)	\
+	fprintf(stderr,fmt,__VA_ARGS__)	\
 
 #define C00LOGN(fmt)			\
-	fprintf(config->logfp,fmt)	\
+	fprintf(stderr,fmt)	\
 
 #define IFCONFIGSET(N,D)		\
 	if(BITTEST(config->flags, N)){	\
@@ -98,6 +99,7 @@ struct c00_measure_conf{
 	long resolution;
 	long cresolution;
 	char appendst[1024];
+	char appendhead[1024];
 	
 };
 

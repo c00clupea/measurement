@@ -324,7 +324,7 @@ static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, s
     long tmpfiffies = 0;
 
     if(fgets(clcpu, 256, statf)){
-	__remove_newline_at_end(&clcpu);
+	__remove_newline_at_end(&clcpu[0]);
 	
 	if(strncmp(clcpu, "cpu", 3) != 0){
 	    return FALSE;
@@ -342,12 +342,14 @@ static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, s
 	char delimit[] = " ";
 	ptr = strtok(clcpu, delimit);
 	int expand = 0;
+
 	while(ptr != NULL) {
 	    tmpfiffies += atol(ptr);
 	    cx += snprintf(buffer + cx, LOGLINELEN - cx, "%s,",ptr);
 	    ptr = strtok(NULL, delimit);
 	    expand++;
 	}
+
 	while(expand <= MAXCPUCOLPERCPU){
 	    cx += snprintf(buffer + cx, LOGLINELEN - cx, "%s,", "-");
 	    expand++;

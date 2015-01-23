@@ -146,6 +146,7 @@ int main( int argc, char **argv )
             strncpy(config->appendhead, argv[i + 2], 1024);
             i++;//ugly but better to read
             i++;
+	    continue;
         }
 
         //--time -t
@@ -206,16 +207,19 @@ int main( int argc, char **argv )
         //logpattern
         if(i == argc - 3) {
             strncpy(config->logpattern, argv[i], 1024);
+	    continue;
         }
 
         //identity
         if(i == argc - 2) {
             strncpy(config->ident, argv[i], 1024);
+	    continue;
         }
 
         //command
         if(i == argc - 1) {
             strncpy(config->cmd, argv[i], 1024);
+	    continue;
         }
     }
 

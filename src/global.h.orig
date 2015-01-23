@@ -1,11 +1,11 @@
 /**
  *
- * cooclupea Honeypot
+ * cooclupea Honeypot 
  * <*))><
  *
  * (C) 2014 by Christoph Pohl (c00clupea@googlemail.com)
  * released under the GPLv.2
- *
+ * 
  * File:	global.h
  * created: 	Wed Dec 17 15:58:52 2014
  * author:  	Christoph Pohl <c00clupea@gmail.com>
@@ -60,7 +60,7 @@
 
 #define echocheck(A,M,...)if(!(A)) { C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error; }
 
-#define echoerror(M,...) C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error;
+#define echoerror(M,...) C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error; 
 
 #define echochecktrue(A,M,...)if((A)) { C00DEBUG(M, __VA_ARGS__); fprintf(stderr,M,__VA_ARGS__);goto error; }
 

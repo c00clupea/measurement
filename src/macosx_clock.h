@@ -22,7 +22,7 @@
 
 #include <sys/time.h>
 
-int clock_gettime(int clk_id, struct timespec* t);
+int clock_gettime(int clk_id, struct timespec *t);
 
 #endif /* _MACOSX_CLOCK_H_ */
 

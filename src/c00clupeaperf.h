@@ -165,7 +165,7 @@ struct c00_stat {
     unsigned long long delayacct_blkio_ticks;	// %llu
 } ;
 
-int measure_call(struct c00_measure_conf *config,struct c00_measure_result *result);
+int measure_call(struct c00_measure_conf *config, struct c00_measure_result *result);
 int init_config(struct c00_measure_conf *config);
 
 #ifdef PERFMAIN

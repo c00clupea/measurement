@@ -16,7 +16,7 @@
  *The unused attribute is here to avoid dependencies to the global.h So no macro here
  */
 
-int clock_gettime(__attribute__((unused)) int clk_id, struct timespec* t)
+int clock_gettime(__attribute__((unused)) int clk_id, struct timespec *t)
 {
     struct timeval now;
     if(gettimeofday(&now, NULL) != 0) {

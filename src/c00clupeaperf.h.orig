@@ -1,11 +1,11 @@
 /**
  *
- * cooclupea Honeypot 
+ * cooclupea Honeypot
  * <*))><
  *
  * (C) 2014 by Christoph Pohl (c00clupea@googlemail.com)
  * released under the GPLv.2
- * 
+ *
  * File:	c00clupeaperf.h
  * created: 	Tue Dec 16 17:24:25 2014
  * author:  	Christoph Pohl <c00clupea@gmail.com>
@@ -25,7 +25,7 @@
 
 
 #if OSDETECTED == DARWIN
-#include "macosx_clock.h" 
+#include "macosx_clock.h"
 #endif
 
 #define BITMASK(b) (1 << ((b) % CHAR_BIT))
@@ -61,7 +61,7 @@
 #define C00WRITEVERBOSE(fmt,...)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
 		fprintf(stdout,fmt,__VA_ARGS__);	\
-	}		
+	}
 
 #define C00WRITEVERBOSEN(fmt)		\
 	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
@@ -87,41 +87,41 @@
 	}
 
 
-struct c00_measure_conf{
-	char flags[BITNSLOTS(MAX_BITSET)];
-	char cmd[1024];
-	char ident[1024];
-	char logpattern[1024];
-	char *argv[64];
-	FILE *logfp;
-	FILE *statfp;
-	FILE *memfp;
-	int pid;
-	long resolution;
-	long cresolution;
-	char appendst[1024];
-	char appendhead[1024];
-	
+struct c00_measure_conf {
+    char flags[BITNSLOTS(MAX_BITSET)];
+    char cmd[1024];
+    char ident[1024];
+    char logpattern[1024];
+    char *argv[64];
+    FILE *logfp;
+    FILE *statfp;
+    FILE *memfp;
+    int pid;
+    long resolution;
+    long cresolution;
+    char appendst[1024];
+    char appendhead[1024];
+
 };
 
-struct c00_stat_rem{
-	long utime;
-	long stime;
-	long cutime;
-	long cstime;
-	long uptime;
-	char init;
+struct c00_stat_rem {
+    long utime;
+    long stime;
+    long cutime;
+    long cstime;
+    long uptime;
+    char init;
 };
 
-struct c00_measure_result{
-	struct timespec *exvptime;
-	int code;
+struct c00_measure_result {
+    struct timespec *exvptime;
+    int code;
 };
 
 /**borrowed from shttp://www.cs.tufts.edu/comp/111/assignments/a3/proc.c**/
 
-struct c00_stat { 
-    int pid;			// %d 
+struct c00_stat {
+    int pid;			// %d
     char comm[256];		// %s
     char state;			// %c
     int ppid;			// %d
@@ -160,10 +160,10 @@ struct c00_stat {
     unsigned long cnswap;	// %lu
     int exit_signal;		// %d
     int processor;		// %d
-    unsigned long rt_priority;	// %lu 
-    unsigned long policy;	// %lu 
-    unsigned long long delayacct_blkio_ticks;	// %llu 
-} ; 
+    unsigned long rt_priority;	// %lu
+    unsigned long policy;	// %lu
+    unsigned long long delayacct_blkio_ticks;	// %llu
+} ;
 
 int measure_call(struct c00_measure_conf *config,struct c00_measure_result *result);
 int init_config(struct c00_measure_conf *config);

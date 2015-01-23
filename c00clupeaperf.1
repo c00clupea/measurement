@@ -1,0 +1,55 @@
+.TH man 8 "23.January.2015" "1.0" "c00clupeaperf man page"
+.SH NAME
+c00clupeaperf \- measure some values
+.SH SYNOPSIS
+c00clupeaperf [-m <val>] [-c <val>] [-a <val> <val>] [-tvne] logpattern logid command 
+.SH DESCRIPTION
+c00clupeaperf is a tool which is able to measure some stats like memory, overall runtime or the cpu.
+However, is is built to generate values for a honeypot. It SHOULD measure what a user is able to see. When you want to know how much memory or cpu your application needs - use valgrind. Any tool like c00clupeaperf, top, htop and all the other stuff depends on snapshots or aggregations.
+.SH OPTIONS
+There are some options..
+.IP --mem -m <val>
+Measure memory with a resolution of <val> microseconds
+.IP --cpu -c <val>
+Measure cpu with a resolution of <val> microseconds
+.IP --addon -a <val> <val>
+c00clupeaperf is designed to run with shellscripts.
+Analysis can be done with a tool like R. However the first val is a comma separated list (like 100,200). This value will be appended to each line written to any logfile. The second value is also a comma separated list (like range1,id2 ). This value will be appended to the first line (the head) of any logfile. But the logfile must not be present to the system. When you want to have only one value do not use a comma
+.IP --time -t
+Writes the overall runtime to a logfile
+.IP --verbose -v 
+Verbose, nothing more...Just writes some crap
+.IP --new -n
+Removes a logfile and create new logfile
+.IP --execvp -e
+Uses execvp() instead of system(). However, memory and cpu measurement will only work with execvp
+.IP logpattern
+This is the pattern which is used for the logfile path (when logfile already exists c00clupeaperf will append the logs)
+The pattern needs two %s, the first %s will be used for the id, the second one describes the type of logfile (c00clupeaperf does this... (stat,allstat,mem,time))
+Together with the next value logid, you can build a lot of logs for analysis
+.IP logid
+This string gets placed at the first placeholder in logpattern
+.IP command
+This is the command which should be measured...
+
+.SH Example
+c00clupeaperf -m 100000 -c 100000 -t -v -a "100,200" "rate,rate1" -n -e "mylog_id_%s_type_%s.log" "sampleid" "uname -mrns"
+
+This will measure 10 times per second the memory and the cpu. It measures the runtime and appends 100,200 to each logfile line. The head will be expanded with rate,rate1. It will create a new log and uses execvp. The logfiles will have the names mylog_id_sampleid_type_stat.log mylog_id_sampleid_type_allstat.log mylog_id_sampleid_type_mem.log mylog_id_sampleid_type_time.log. The logfiles are in the current directory
+
+.SH Logfiles
+.IP xyz_stat.log
+Will show the cpu for the measured command
+.IP xyz_allstat.log
+Will show all cpus for the whole system during runtime of command
+.IP xyz_mem.log
+Will show the memory
+.IP xyz_time.log
+Will show some stats about runtime
+
+.SH SEE ALSO
+valgrind(1)
+.SH BUGS
+Find them yourself :-)
+.SH AUTHOR
+c00clupea@gmail.com aka CP

@@ -291,6 +291,7 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct *coo_measure_conf *config)
 {
     char clcpu[256];
+    
 
 }
 #endif

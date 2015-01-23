@@ -33,9 +33,14 @@ static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldst
 #if OSDETECTED == LINUX
 static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat,FILE *logf, struct c00_measure_conf *config);
 #endif
+#if OSDETECTED == LINUX
+static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config, int *countproc);
+static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct *coo_measure_conf *config);
+#endif
 static inline int __test_init_log(char *fn,char *initline, struct c00_measure_conf *config);
 static inline int __clear_log_when_user_wishes(struct c00_measure_conf *config, char *fn);
 static inline int __print_to_log(struct c00_measure_conf *config, FILE *fd,char *fmt,...);
+
 
 
 #if OSDETECTED == LINUX
@@ -52,7 +57,7 @@ int measure_call(struct c00_measure_conf *config, struct c00_measure_result *res
 		C00DEBUG("Troubles with clock %s"," start");
 		return ERROR;
 	}
-	if(BITTEST(config->flags, MEASURE_EXECVP)){
+	if(BITTEST(config->flags, MEASURE_EXECVP)) {
 		__call_execvp(config,result);
 	}
 	else{
@@ -277,6 +282,34 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
 	return TRUE;
 	
 }
+
+#if OSDETECTED == LINUX
+static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct *coo_measure_conf *config){
+	char clcpu[256];
+	
+}
+#endif
+
+#if OSDETECTED == LINUX
+static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config, int *countproc){
+	FILE *f;
+	f=fopen(statf);
+	if(!f){
+		fprintf(stdout,"Unable to open %s\n",statf);
+		return ERROR;
+	}
+	long tmpfiffies = 0;
+	*countproc = 0;
+	while(__read_cpu_stat_line(statf,~tmpfiffies,logf,config) == TRUE){
+		if(countprocessor == 0){
+			*fiffies = tmpfiffies;
+		}
+		*countproc++;
+		//Do nothing it is just a loop
+	}
+	return TRUE;
+}
+#endif
 
 #if OSDETECTED == LINUX
 static inline int __stat_loop(FILE *logf, char *statf,struct c00_stat_rem *oldstat, struct c00_stat *s, struct c00_measure_conf *config){

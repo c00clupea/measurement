@@ -34,13 +34,13 @@ static inline int __stat_loop(FILE *logf, char *statf, struct c00_stat_rem *olds
 static inline int __calc_cpu_perf(struct c00_stat *stat, long fiffies, struct c00_stat_rem *oldstat, FILE *logf, struct c00_measure_conf *config);
 #endif
 #if OSDETECTED == LINUX
-static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config, int *countproc);
-static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct *coo_measure_conf *config);
+static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config);
+static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config);
 #endif
 static inline int __test_init_log(char *fn, char *initline, struct c00_measure_conf *config);
 static inline int __clear_log_when_user_wishes(struct c00_measure_conf *config, char *fn);
 static inline int __print_to_log(struct c00_measure_conf *config, FILE *fd, char *fmt, ...);
-
+static inline int __remove_newline_at_end(char *line);
 
 
 #if OSDETECTED == LINUX
@@ -250,7 +250,7 @@ int main( int argc, char **argv )
 #if OSDETECTED == LINUX
     fprintf(stdout, "You use a system (Linux) with monothonic counter....\n");
 #endif
-    C00DEBUG("Command :%s", config->cmd);
+    C00WRITEVERBOSE("Command :%s\n", config->cmd);
     char tmpcmd[1024];
     strncpy(tmpcmd, config->cmd, 1024);
     __parse_command(tmpcmd, config->argv);
@@ -303,62 +303,82 @@ static inline int __call_system(struct c00_measure_conf *config, struct c00_meas
     return TRUE;
 }
 
+static inline int __remove_newline_at_end(char *line) {
+    int stringlen = strlen(line) - 1;
+
+    if(line[stringlen] == '\n'){
+	line[stringlen] = '\0';
+	return TRUE;
+    }
+    else{
+	return FALSE;
+    }
+
+    return TRUE;//unnecessary but clang shuts up
+}
+
 #if OSDETECTED == LINUX
-static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct *coo_measure_conf *config)
+static inline int __read_cpu_stat_line(FILE *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config)
 {
     char clcpu[256];
     long tmpfiffies = 0;
 
-    if(fgets(clcpu, 256, fp)){
-
+    if(fgets(clcpu, 256, statf)){
+	__remove_newline_at_end(&clcpu);
+	
 	if(strncmp(clcpu, "cpu", 3) != 0){
 	    return FALSE;
 	}
+
+	int isagg = FALSE;
+
+	if(clcpu[3] == ' '){
+	    isagg = TRUE;
+	}
+	
 	char buffer[LOGLINELEN];
 	int cx = 0;
 	char *ptr;
 	char delimit[] = " ";
-	int isagg = FALSE;
 	ptr = strtok(clcpu, delimit);
-	
+	int expand = 0;
 	while(ptr != NULL) {
 	    tmpfiffies += atol(ptr);
-	    cx = snprintf(buffer + cx, LOGLINELEN - cx, "%s,",prt);
-	    ptr = strtok(NULL, delimit)M
+	    cx += snprintf(buffer + cx, LOGLINELEN - cx, "%s,",ptr);
+	    ptr = strtok(NULL, delimit);
+	    expand++;
+	}
+	while(expand <= MAXCPUCOLPERCPU){
+	    cx += snprintf(buffer + cx, LOGLINELEN - cx, "%s,", "-");
+	    expand++;
 	}
 
-	if(strncmp(clcpu, "cpu ", 4) == 0){
+	if(isagg == TRUE) {
 	    *fiffies = tmpfiffies;
-	    isagg = TRUE;
 	}
 
 	snprintf(buffer + cx, LOGLINELEN - cx, "%lu,%lu,%d", tmpfiffies, *fiffies, isagg);
 	__print_to_log(config, logf, "%s", buffer);	    
     }
+    return TRUE;
 }
 #endif
 
 #if OSDETECTED == LINUX
-static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config, int *countproc)
+static inline int __calc_cpu_all(char *statf, long *fiffies, FILE *logf, struct c00_measure_conf *config)
 {
     FILE *f;
-    f = fopen(statf);
+    f = fopen(statf, "r");
 
     if(!f) {
         fprintf(stdout, "Unable to open %s\n", statf);
         return ERROR;
     }
 
-    *countproc = 0;
-
-    while(__read_cpu_stat_line(statf, fiffies, logf, config) == TRUE) {
-        *countproc++;
+    while(__read_cpu_stat_line(f, fiffies, logf, config) == TRUE) {
         //Do nothing it is just a loop
     }
 
-    if(*countproc > 1) {
-	*countproc--;//There is always one processor, however when there is only an aggregated cpu but no cpu0 we prevent from --   
-    }
     fclose(f);
 
     return TRUE;
@@ -371,34 +391,14 @@ static inline int __stat_loop(FILE *logf, char *statf, struct c00_stat_rem *olds
     const char *format = "%d %s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld %ld %ld %lu %lu %ld %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %lu %d %d %lu %lu %llu";
     //open pid stat
     FILE *f;
+    long fiffies = 0;
     f = fopen(statf, "r");
 
     if(!f) {
         return FALSE;
     }
 
-    //open general stat
-    FILE *fp;
-    fp = fopen("/proc/stat", "r");
-
-    if(!fp) {
-        return FALSE;
-    }
-
-    //buffer for cpu aggregates
-    char clcpu[256];
-    long fiffies = 0;
-
-    if(fgets(clcpu, 256, fp)) {
-        char *ptr;
-        char delimit[] = " ";
-        ptr = strtok(clcpu, delimit);
-
-        while(ptr != NULL) {
-            fiffies += atol(ptr);
-            ptr = strtok(NULL, delimit);
-        }
-    }
+    __calc_cpu_all("/proc/stat", &fiffies, config->allstatfp, config);
 
     if (42 == fscanf(f, format,
                      &s->pid,
@@ -445,7 +445,7 @@ static inline int __stat_loop(FILE *logf, char *statf, struct c00_stat_rem *olds
                      &s->delayacct_blkio_ticks
                     )) {
         fclose(f);
-        fclose(fp);
+
 
         //fprintf(stderr,"pid %d\n",s->pid);
         if(oldstat->init == TRUE) {
@@ -464,7 +464,6 @@ static inline int __stat_loop(FILE *logf, char *statf, struct c00_stat_rem *olds
     else {
         /**last one**/
         fclose(f);
-        fclose(fp);
         return FALSE;
     }
 
@@ -673,6 +672,10 @@ static inline int __destroy_all(struct c00_measure_conf *config, struct c00_meas
         fclose(config->statfp);
     }
 
+    if(config->allstatfp) {
+        fclose(config->allstatfp);
+    }
+
     free(config);
     free(result->exvptime);
     free(result);
@@ -699,7 +702,7 @@ static inline int __parse_command(char *tmpcmd, char **tmpargv)
         }
     }
 
-    *tmpargv = "\0";
+    *tmpargv = '\0';
     return TRUE;
 }
 
@@ -768,21 +771,28 @@ static inline int __init_logs(struct c00_measure_conf *config)
 
     if(BITTEST(config->flags, MEASURE_CPU)) {
         char statname[PATH_MAX];
+	char allstatname[PATH_MAX];
         sprintf(statname, config->logpattern, config->ident, "stat");
-
+        sprintf(allstatname, config->logpattern, config->ident, "allstat");
         if(__test_init_log(statname, "fiffies,uptime,utime,stime,cutime,cstime,cpupercent", config) != TRUE) {
             return ERROR;
         }
-
+        if(__test_init_log(allstatname, "desc,user,nice,system,idle,iowait,irq,softirq,steal,guest,guest_nice,fiffies,aggfiffies,isagg", config) != TRUE) {
+            return ERROR;
+        }
         config->statfp = fopen(statname, "a");
-
+        config->allstatfp = fopen(allstatname, "a");
         if(!config->statfp) {
             C00WRITE("Unable to open %s for write access\n", statname);
             return ERROR;
         }
+        if(!config->allstatfp) {
+            C00WRITE("Unable to open %s for write access\n", allstatname);
+            return ERROR;
+        }
     }
 
-    if(BITTEST(config->flags, MEASURE_CPU)) {
+    if(BITTEST(config->flags, MEASURE_MEM)) {
         char memname[PATH_MAX];
         sprintf(memname, config->logpattern, config->ident, "mem");
 

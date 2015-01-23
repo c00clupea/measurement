@@ -51,7 +51,7 @@
 #define LOGDATEFMT "%Y%m%d%H%M"
 #define LOGDATEBUF 13 /*12 +1 (\0)*/
 #define LOGLINELEN 1024
-
+#define MAXCPUCOLPERCPU 10
 
 
 #define MINARGC 3
@@ -59,14 +59,14 @@
 #define USAGEPATTERN "c00clupeaperf <options> logfilefmt ident command\np.ex c00clupeaperf -m 100000 -t -e \"mylog_id_%s_type_%s.log\" \"sampleid\" \"uname -mrns\""
 
 #define C00WRITEVERBOSE(fmt,...)		\
-	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
-		fprintf(stdout,fmt,__VA_ARGS__);	\
-	}
+    if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
+	fprintf(stdout,fmt,__VA_ARGS__);		\
+    }
 
 #define C00WRITEVERBOSEN(fmt)		\
-	if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
-		fprintf(stdout,fmt);	\
-	}
+    if(BITTEST(config->flags, MEASURE_VERBOSE)){	\
+	fprintf(stdout,fmt);				\
+    }
 
 #define C00WRITEN(fmt)		\
 		fprintf(stdout,fmt)	\
@@ -95,6 +95,7 @@ struct c00_measure_conf {
     char *argv[64];
     FILE *logfp;
     FILE *statfp;
+    FILE *allstatfp;
     FILE *memfp;
     int pid;
     long resolution;

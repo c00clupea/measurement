@@ -8,20 +8,20 @@ c00clupeaperf is a tool which is able to measure some stats like memory, overall
 However, is is built to generate values for a honeypot. It SHOULD measure what a user is able to see. When you want to know how much memory or cpu your application needs - use valgrind. Any tool like c00clupeaperf, top, htop and all the other stuff depends on snapshots or aggregations.
 .SH OPTIONS
 There are some options..
-.IP --mem -m <val>
+.IP "--mem -m <val>"
 Measure memory with a resolution of <val> microseconds
-.IP --cpu -c <val>
+.IP "--cpu -c <val>"
 Measure cpu with a resolution of <val> microseconds
-.IP --addon -a <val> <val>
+.IP "--addon -a <val> <val>"
 c00clupeaperf is designed to run with shellscripts.
 Analysis can be done with a tool like R. However the first val is a comma separated list (like 100,200). This value will be appended to each line written to any logfile. The second value is also a comma separated list (like range1,id2 ). This value will be appended to the first line (the head) of any logfile. But the logfile must not be present to the system. When you want to have only one value do not use a comma
-.IP --time -t
+.IP "--time -t"
 Writes the overall runtime to a logfile
-.IP --verbose -v 
+.IP "--verbose -v" 
 Verbose, nothing more...Just writes some crap
-.IP --new -n
+.IP "--new -n"
 Removes a logfile and create new logfile
-.IP --execvp -e
+.IP "--execvp -e"
 Uses execvp() instead of system(). However, memory and cpu measurement will only work with execvp
 .IP logpattern
 This is the pattern which is used for the logfile path (when logfile already exists c00clupeaperf will append the logs)

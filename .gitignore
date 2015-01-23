@@ -32,3 +32,5 @@ configure
 src/conf.h.in
 *.log
 c00clupeaperf-01.tar.gz
+*.orig
+src/*.orig

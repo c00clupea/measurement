@@ -19,9 +19,11 @@
 int clock_gettime(__attribute__((unused)) int clk_id, struct timespec *t)
 {
     struct timeval now;
+
     if(gettimeofday(&now, NULL) != 0) {
         return -1;
     }
+
     t->tv_sec  = now.tv_sec;
     t->tv_nsec = now.tv_usec * 1000;
     return 0;
